@@ -1,8 +1,11 @@
 # missing-media-scripts
 Scripts to compare lists of media and send an email if something is missing from the list
 
-#notice
+# Notice
 You will first have to open `generate_missing_media_list.py` and configure your email.
+
+# Discord
+https://discord.com/channels/1217932881301737523/1217933464955785297
 
 # How to Use and Schedule Scripts with Cron
 
