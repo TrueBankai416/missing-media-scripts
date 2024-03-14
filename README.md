@@ -70,8 +70,6 @@ Here is my setup
 
 ![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/c21528a3-6528-4520-b328-d81b9fc38804)
 
-![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/0cbb5c9c-63e6-46ef-85b5-216876b42f98)
-
 ![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/8fa4114a-d6cc-4646-b7f4-5c58d723fe38)
 
 
