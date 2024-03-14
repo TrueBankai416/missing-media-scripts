@@ -72,5 +72,7 @@ Here is my setup
 
 ![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/8fa4114a-d6cc-4646-b7f4-5c58d723fe38)
 
+![email](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/a84c473e-fbb6-44a9-8430-26a8da50ff83)
+
 
 
