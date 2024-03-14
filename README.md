@@ -61,3 +61,14 @@ To run this script every day at 6:05 AM, you can add the following line to your 
 4. Save and exit the editor. Cron will automatically apply the changes.
 
 Remember to replace `/path/to/` with the actual paths to your scripts and directories.
+
+##For reference
+Here is my setup
+![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/f47e7c33-06b4-42cd-9107-d251a88d7656)
+
+![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/bea11c19-7673-401b-abe9-044c75d1362d)
+
+![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/c21528a3-6528-4520-b328-d81b9fc38804)
+
+
+
