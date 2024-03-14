@@ -1,6 +1,9 @@
 # missing-media-scripts
 Scripts to compare lists of media and send an email if something is missing from the list
 
+#notice
+You will first have to open `generate_missing_media_list.py` and configure your email.
+
 # How to Use and Schedule Scripts with Cron
 
 ## generate_media_list.py
