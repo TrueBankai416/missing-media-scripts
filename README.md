@@ -4,6 +4,15 @@ Scripts to compare lists of media and send an email if something is missing from
 # Notice
 You will first have to open `generate_missing_media_list.py` and configure your email.
 
+The `generate_missing_media_list.py` script will only detect a change if the file name or path changes.
+
+# Purpose
+The purpose of the `generate_media_list.py` script is to scan the desired directories for `MKV,MP4, and AVI` files and then generate a list with the files and their absolute paths every morning at 5am (if using cron).
+
+The purpose of the `generate_missing_media.py` script is to compare the last two lists created by the `generate_media_list.py` script and if there is a missing entry in the most recent list it will generate another list with the names and absolute paths of the missing media files, from there it will also email you the list of missing content (this script will run every morning at 6am if using cron).
+
+The purpose of the `manage_txt_files.sh` is to rotate the lists and only allow 100 lists to exist on the system. (this script will run every morning at 6:05am if using cron).
+
 # Discord
 https://discord.com/channels/1217932881301737523/1217933464955785297
 
