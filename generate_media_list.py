@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 import argparse
 
@@ -11,7 +12,8 @@ def generate_media_list(directories, output_file):
     """
     media_files = []
     for directory in directories:
-        for root, dirs, files in os.walk(directory):
+        for root, dirs, files in os.walk(directory, topdown=True):
+            dirs[:] = [d for d in dirs if not d.startswith('.')]  # Ignore hidden directories
             for file in files:
                 if file.endswith(('.mp4', '.mkv', '.avi')):
                     media_files.append(os.path.join(root, file))
@@ -21,7 +23,7 @@ def generate_media_list(directories, output_file):
             f.write(f"{file}\n")
 
 def main():
-    parser = argparse.ArgumentParser(description="Generate a list of media files from specified directories.")
+    parser = argparse.ArgumentParser(description="Generate a list of media files.")
     parser.add_argument('-d', '--directories', nargs='+', help='Directories to search for media files.', required=True)
     parser.add_argument('-o', '--output', help='Output file to write the list of media files.', required=True)
     args = parser.parse_args()
