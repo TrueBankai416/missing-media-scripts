@@ -23,13 +23,13 @@ This Python script generates a list of media files (videos) from specified direc
 
 ### Usage
 ```bash
-/usr/bin/python3 /path/to/generate_media_list.py -d /your/directory1 /your/directory2 -o /path/to/output/media_list.txt
+/path/to/generate_media_list.py -d /your/directory1 /your/directory2 -o /path/to/output/media_list.txt
 ```
 
 ### Scheduling with Cron
 To run this script every day at 5 AM, you can add the following line to your crontab:
 ```bash
-0 5 * * * /usr/bin/python3 /path/to/generate_media_list.py -d /your/directory1 /your/directory2 -o /path/to/output/media_list.txt
+0 5 * * * /path/to/generate_media_list.py -d /your/directory1 /your/directory2 -o /path/to/output/media_list.txt
 ```
 
 ## generate_missing_media_list.py
@@ -37,13 +37,13 @@ This Python script identifies missing media files by comparing the most recent m
 
 ### Usage
 ```bash
-/usr/bin/python3 /path/to/generate_missing_media_list.py -m /path/to/media_list_dir -o /path/to/output/missing_media_list.txt
+/path/to/generate_missing_media_list.py -m /path/to/media_list_dir -o /path/to/output/missing_media_list.txt
 ```
 
 ### Scheduling with Cron
 To run this script every day at 6 AM, you can add the following line to your crontab:
 ```bash
-0 6 * * * /usr/bin/python3 /path/to/generate_missing_media_list.py -m /path/to/media_list_dir -o /path/to/output/missing_media_list.txt
+0 6 * * * /path/to/generate_missing_media_list.py -m /path/to/media_list_dir -o /path/to/output/missing_media_list.txt
 ```
 
 ## manage_txt_files.sh
