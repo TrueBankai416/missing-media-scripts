@@ -2,6 +2,9 @@
 import os
 import argparse
 import glob
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
 
 def load_expected_titles(expected_titles_file):
     """
@@ -31,24 +34,6 @@ def find_two_most_recent_media_lists(directory, pattern):
     if len(files) < 2:
         return None, None
     return files[0], files[1]  # Return the most recent and the second most recent
-    """
-    Finds actual media files in the specified directories.
-
-    Args:
-    directories (list of str): Directories to search for media files.
-
-    Returns:
-    set of str: A set containing the names of found media files.
-    """
-    media_files = set()
-    for directory in directories:
-        for root, dirs, files in os.walk(directory):
-            for file in files:
-                if file.endswith(('.mp4', '.mkv', '.avi')):
-                    media_files.add(os.path.splitext(file)[0])  # Remove file extension
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
 
 def generate_missing_media_list(media_list_dir, output_file):
     """

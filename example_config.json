@@ -1,0 +1,16 @@
+{
+    "scan_directories": [
+        "C:\\Users\\YourName\\Videos\\Movies",
+        "C:\\Users\\YourName\\Videos\\TV Shows",
+        "D:\\Media\\Movies"
+    ],
+    "output_directory": "C:\\Users\\YourName\\Documents\\MediaLists",
+    "email": {
+        "sender_email": "your-email@gmail.com",
+        "receiver_email": "alerts@example.com",
+        "password": "your-app-password-here",
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 587
+    },
+    "file_retention_count": 100
+}
