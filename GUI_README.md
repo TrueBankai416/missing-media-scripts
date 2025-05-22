@@ -15,12 +15,27 @@ A user-friendly Windows GUI application that simplifies the process of monitorin
 
 ## Installation
 
-### Prerequisites
+### Option 1: Standalone Executable (Recommended)
+**No Python installation required!**
+
+1. **Download the executable** from the releases page or build it yourself
+2. **Double-click** `MediaManager.exe` to run
+3. **First run** may take 10-15 seconds (extracting files)
+
+To build the executable yourself:
+```bash
+build_exe.bat
+```
+See `BUILD_EXECUTABLE.md` for detailed instructions.
+
+### Option 2: Python Installation
+
+#### Prerequisites
 - Python 3.6 or later
 - Windows operating system
 - Internet connection (for email notifications)
 
-### Setup Instructions
+#### Setup Instructions
 
 1. **Download or Clone the Repository**
    ```bash
@@ -33,7 +48,7 @@ A user-friendly Windows GUI application that simplifies the process of monitorin
    python media_manager_gui.py
    ```
 
-   Or double-click the `run_gui.bat` file (if created)
+   Or double-click the `run_gui.bat` file
 
 ## Quick Start Guide
 
@@ -187,7 +202,16 @@ missing-media-scripts/
 ├── generate_media_list.py        # Core media scanning functionality
 ├── generate_missing_media_list.py # Missing media detection
 ├── manage_txt_files.sh           # Original bash script (Linux/Mac)
+├── manage_files.py               # Python equivalent for Windows
 ├── media_manager_config.json     # GUI configuration (auto-generated)
+├── run_gui.bat                   # Windows launcher for Python version
+├── build_exe.bat                 # Build script for executable
+├── media_manager_gui.spec        # PyInstaller configuration
+├── BUILD_EXECUTABLE.md           # Executable build documentation
+├── requirements.txt              # Python dependencies
+├── example_config.json           # Example configuration file
+├── dist/                         # Built executable (after building)
+│   └── MediaManager.exe          # Standalone executable
 ├── lists/                        # Default output directory
 │   ├── media_list_*.txt          # Generated media lists
 │   └── missing_media_*.txt       # Missing media reports

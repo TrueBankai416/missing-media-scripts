@@ -11,5 +11,5 @@
 # - email
 # - pathlib
 
-# Optional: If you want to create an executable
-# pyinstaller==5.13.2
+# For creating executable (.exe) file
+pyinstaller==6.3.0
