@@ -14,7 +14,7 @@ if %errorlevel% neq 0 (
 )
 
 echo Installing PyInstaller if not present...
-pip install pyinstaller==6.3.0
+pip install pyinstaller==6.13.0
 
 echo.
 echo Building executable... This may take a few minutes.
