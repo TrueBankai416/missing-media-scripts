@@ -17,15 +17,17 @@ A comprehensive media file monitoring system that tracks your media collection, 
 
 ### Windows Users (Recommended)
 
-**Option 1: GUI Application**
+**Option 1: Standalone Executable** (See `BUILD_EXECUTABLE.md`)
+1. Build or download the `.exe` file
+2. Run `MediaManager.exe` directly (no Python installation required)
+
+
+**Option 2: GUI Application**
 1. Download or clone this repository
 2. Double-click `run_gui.bat` to start the GUI
 3. Configure your media directories in the "Main Configuration" tab
 4. Click "Run Complete Check" to start monitoring
 
-**Option 2: Standalone Executable** (See `BUILD_EXECUTABLE.md`)
-1. Build or download the `.exe` file
-2. Run `MediaManager.exe` directly (no Python installation required)
 
 ### Linux Users
 
