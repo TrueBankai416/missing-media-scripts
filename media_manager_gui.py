@@ -14,6 +14,7 @@ import glob
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 from pathlib import Path
 
 # Import functions from existing scripts
@@ -481,7 +482,7 @@ class MediaManagerGUI:
             body = f"The following {len(missing_titles)} media files are missing:\n\n" + '\n'.join(sorted(missing_titles))
             
             message = MIMEMultipart()
-            message["From"] = email_config["sender_email"]
+            message["From"] = formataddr((email_config["sender_name"], email_config["sender_email"]))
             message["To"] = email_config["receiver_email"]
             message["Subject"] = subject
             

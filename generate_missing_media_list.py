@@ -5,6 +5,7 @@ import glob
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 
 def load_expected_titles(expected_titles_file):
     """
@@ -80,7 +81,7 @@ def send_email(subject, body):
     password = "PASSWORD_HERE"
 
     message = MIMEMultipart()
-    message["From"] = sender_email
+    message["From"] = formataddr((sender_name, sender_email))
     message["To"] = receiver_email
     message["Subject"] = subject
 
