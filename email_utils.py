@@ -73,7 +73,7 @@ def load_email_config_from_file(config_file="media_manager_config.json"):
     """
     try:
         if os.path.exists(config_file):
-            with open(config_file, 'r') as f:
+            with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
                 email_config = config.get("email", {})
                 
