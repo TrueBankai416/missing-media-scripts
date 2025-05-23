@@ -74,6 +74,7 @@ def main():
     generate_missing_media_list(args.media_list_dir, args.output)
 
 def send_email(subject, body):
+    sender_name = "SENDER_NAME_HERE"
     sender_email = "SENDER_EMAIL_HERE"
     receiver_email = "RECEIVER_EMAIL_HERE"
     password = "PASSWORD_HERE"
