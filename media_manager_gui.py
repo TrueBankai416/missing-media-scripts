@@ -11,10 +11,7 @@ import json
 import threading
 import datetime
 import glob
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.utils import formataddr
+from email_utils import send_missing_media_email, load_email_config_from_file
 from pathlib import Path
 
 # Import functions from existing scripts
@@ -402,7 +399,11 @@ class MediaManagerGUI:
                 
                 # Send email if configured
                 if self.is_email_configured():
-                    self.send_missing_email(missing_titles)
+                    success = send_missing_media_email(
+                        missing_titles, 
+                        config_file="media_manager_config.json",
+                        log_function=self.log_message
+                    )
                 else:
                     self.log_message("Email not configured - skipping email notification")
                 
@@ -473,31 +474,6 @@ class MediaManagerGUI:
         required_fields = ["sender_email", "receiver_email", "password", "smtp_server"]
         return all(email_config.get(field) for field in required_fields)
     
-    def send_missing_email(self, missing_titles):
-        """Send email notification for missing media"""
-        try:
-            email_config = self.config["email"]
-            
-            subject = "Missing Media Files Detected"
-            body = f"The following {len(missing_titles)} media files are missing:\n\n" + '\n'.join(sorted(missing_titles))
-            
-            message = MIMEMultipart()
-            message["From"] = formataddr((email_config["sender_name"], email_config["sender_email"]))
-            message["To"] = email_config["receiver_email"]
-            message["Subject"] = subject
-            
-            message.attach(MIMEText(body, "plain"))
-            
-            server = smtplib.SMTP(email_config["smtp_server"], int(email_config["smtp_port"]))
-            server.starttls()
-            server.login(email_config["sender_email"], email_config["password"])
-            server.sendmail(email_config["sender_email"], email_config["receiver_email"], message.as_string())
-            server.quit()
-            
-            self.log_message("Email notification sent successfully")
-            
-        except Exception as e:
-            self.log_message(f"Error sending email: {e}")
     
     def refresh_file_list(self):
         """Refresh the list of files in the logs tab"""
