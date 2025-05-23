@@ -2,10 +2,7 @@
 import os
 import argparse
 import glob
-import smtplib
-from email.mime.text import MIMEText
-from email.mime.multipart import MIMEMultipart
-from email.utils import formataddr
+from email_utils import send_missing_media_email, create_email_config_hardcoded
 
 def load_expected_titles(expected_titles_file):
     """
@@ -61,7 +58,7 @@ def generate_missing_media_list(media_list_dir, output_file):
         with open(output_file, 'w') as f:
             for title in sorted(missing_titles):
                 f.write(f"{title}\n")
-        send_email("Missing Media Files", "The following media files are missing:\n\n" + '\n'.join(sorted(missing_titles)))
+        send_missing_media_email(missing_titles)
         print(f"Missing titles written to {output_file}")
     else:
         print("No titles are missing.")
@@ -74,25 +71,6 @@ def main():
 
     generate_missing_media_list(args.media_list_dir, args.output)
 
-def send_email(subject, body):
-    sender_name = "SENDER_NAME_HERE"
-    sender_email = "SENDER_EMAIL_HERE"
-    receiver_email = "RECEIVER_EMAIL_HERE"
-    password = "PASSWORD_HERE"
-
-    message = MIMEMultipart()
-    message["From"] = formataddr((sender_name, sender_email))
-    message["To"] = receiver_email
-    message["Subject"] = subject
-
-    message.attach(MIMEText(body, "plain"))
-
-    server = smtplib.SMTP('smtp.server.com', 587)  # Use the correct SMTP server and port
-    server.starttls()
-    server.login(sender_email, password)
-    server.sendmail(sender_email, receiver_email, message.as_string())
-    server.quit()
-    #return media_files #this causes errors
 
 if __name__ == "__main__":
     main()
