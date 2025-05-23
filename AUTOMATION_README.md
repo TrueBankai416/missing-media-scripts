@@ -9,7 +9,7 @@ The Media Manager now includes powerful automation features that allow you to sc
 - **Generate Media List**: Scan directories and create timestamped media lists
 - **Check for Missing Media**: Compare recent lists and identify missing files
 - **Manage File Retention**: Clean up old list files (keep only latest N files)  
-- **Check Windows Filename Compatibility**: Validate filenames for Windows compatibility
+- **Check Windows Filename Compatibility**: Detect and report filename issues (does not auto-fix)
 - **Run Complete Check**: Execute all operations in sequence
 
 ## Quick Start
@@ -50,12 +50,12 @@ Check Windows Filenames: Weekly at 06:30
 ```
 
 #### Complete Check (Recommended)
-Enable "Run Complete Check" to execute core operations in sequence at a single time. This overrides individual task settings for the core operations and is the most efficient approach.
+Enable "Run Complete Check" to execute all operations in sequence at a single time. This overrides individual task settings and is the most efficient approach.
 
 ```
 Complete Check: Daily at 05:00
-(Runs core operations: generate → check missing → manage files)
-Note: Filename checking runs separately if enabled
+(Runs all operations: generate → check missing → manage files → detect filename issues)
+Note: Filename checking only detects and reports issues - does NOT automatically rename files
 ```
 
 ### Time Format
@@ -80,6 +80,27 @@ Note: Filename checking runs separately if enabled
 - Jobs are added with "# MediaManager:" comments for identification
 - Runs with the user's permissions
 - Requires user to be logged in (unless using system cron)
+
+## Important: Filename Checking Behavior
+
+### Detection Only - No Automatic Fixes
+The **"Check Windows Filename Compatibility"** task only **detects and reports** filename issues:
+
+- ✅ **Creates reports** of files with Windows naming problems
+- ✅ **Saves reports** to `filename_issues/` directory  
+- ✅ **Logs issue counts** in automation output
+- ❌ **Does NOT automatically rename** any files
+- ❌ **Does NOT modify** your media files in any way
+
+### Manual Fix Process
+To actually fix filename issues:
+1. **Run automation** to detect issues automatically
+2. **Review reports** in the "Logs & Results" tab  
+3. **Use GUI manually**: Go to "View & Fix Filename Issues" dialog
+4. **Review suggestions** and select which fixes to apply
+5. **Apply selected fixes** with user verification
+
+This ensures **end user verification** before any files are renamed.
 
 ## Advanced Configuration
 
