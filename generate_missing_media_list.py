@@ -14,7 +14,7 @@ def load_expected_titles(expected_titles_file):
     Returns:
     set of str: A set containing the expected media titles.
     """
-    with open(expected_titles_file, 'r') as f:
+    with open(expected_titles_file, 'r', encoding='utf-8') as f:
         return set(f.read().splitlines())
 
 def find_two_most_recent_media_lists(directory, pattern):
@@ -53,7 +53,7 @@ def generate_missing_media_list(media_list_dir, output_file):
     # Load titles from both files
     def load_titles_from_file(file_path):
         try:
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 return set(f.read().splitlines())
         except Exception as e:
             print(f"Error reading {file_path}: {e}")
@@ -71,7 +71,7 @@ def generate_missing_media_list(media_list_dir, output_file):
 
     if missing_titles:
         try:
-            with open(output_file, 'w') as f:
+            with open(output_file, 'w', encoding='utf-8') as f:
                 for title in sorted(missing_titles):
                     f.write(f"{title}\n")
             print(f"Missing titles written to {output_file}")

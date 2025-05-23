@@ -50,7 +50,7 @@ class MediaManagerGUI:
         
         try:
             if os.path.exists(self.config_file):
-                with open(self.config_file, 'r') as f:
+                with open(self.config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
                     # Merge with defaults to ensure all keys exist
                     for key in default_config:
@@ -65,7 +65,7 @@ class MediaManagerGUI:
     def save_config(self):
         """Save configuration to JSON file"""
         try:
-            with open(self.config_file, 'w') as f:
+            with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=4)
         except Exception as e:
             messagebox.showerror("Config Error", f"Error saving config: {e}")
@@ -391,7 +391,7 @@ class MediaManagerGUI:
             
             # Load titles from both files
             def load_titles_from_file(file_path):
-                with open(file_path, 'r') as f:
+                with open(file_path, 'r', encoding='utf-8') as f:
                     return set(f.read().splitlines())
             
             most_recent_titles = load_titles_from_file(most_recent)
@@ -405,7 +405,7 @@ class MediaManagerGUI:
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
                 missing_file = os.path.join(output_dir, f"missing_media_{timestamp}.txt")
                 
-                with open(missing_file, 'w') as f:
+                with open(missing_file, 'w', encoding='utf-8') as f:
                     for title in sorted(missing_titles):
                         f.write(f"{title}\n")
                 
@@ -523,7 +523,7 @@ class MediaManagerGUI:
             
             file_path = os.path.join(self.output_var.get(), filename)
             
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             self.log_text.config(state='normal')
