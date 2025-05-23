@@ -49,6 +49,7 @@ def find_two_most_recent_media_lists(directory, pattern):
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 
 def generate_missing_media_list(media_list_dir, output_file):
     """
@@ -95,7 +96,7 @@ def send_email(subject, body):
     password = "PASSWORD_HERE"
 
     message = MIMEMultipart()
-    message["From"] = f"{sender_name} <{sender_email}>"
+    message["From"] = formataddr((sender_name, sender_email))
     message["To"] = receiver_email
     message["Subject"] = subject
 
