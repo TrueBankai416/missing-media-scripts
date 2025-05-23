@@ -40,6 +40,7 @@ class MediaManagerGUI:
             "scan_directories": [],
             "output_directory": os.path.join(os.getcwd(), "lists"),
             "email": {
+                "sender_name": "",
                 "sender_email": "",
                 "receiver_email": "",
                 "password": "",
