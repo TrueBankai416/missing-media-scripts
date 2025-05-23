@@ -81,7 +81,7 @@ def send_email(subject, body):
     password = "PASSWORD_HERE"
 
     message = MIMEMultipart()
-    message["From"] = sender_email
+    message["From"] = formataddr((sender_name, sender_email))
     message["To"] = receiver_email
     message["Subject"] = subject
 
