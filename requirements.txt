@@ -1,0 +1,15 @@
+# Requirements for Media Manager GUI
+# No additional requirements needed beyond Python standard library
+# The following are standard library modules used:
+# - tkinter (included with Python on Windows)
+# - os
+# - json
+# - threading
+# - datetime
+# - glob
+# - smtplib
+# - email
+# - pathlib
+
+# For creating executable (.exe) file
+pyinstaller==6.3.0

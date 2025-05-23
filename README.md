@@ -87,4 +87,3 @@ Here is my setup
 ![email](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/a84c473e-fbb6-44a9-8430-26a8da50ff83)
 
 
-
