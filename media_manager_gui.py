@@ -20,6 +20,190 @@ from generate_media_list import generate_media_list
 from generate_missing_media_list import find_two_most_recent_media_lists
 from windows_filename_validator import WindowsFilenameValidator
 
+class FilenameFixDialog:
+    def __init__(self, parent, validation_results, validator, log_function):
+        self.validation_results = validation_results
+        self.validator = validator
+        self.log_function = log_function
+        self.fixes_to_apply = {}  # filepath -> new_filename
+        
+        # Create the dialog window
+        self.dialog = tk.Toplevel(parent)
+        self.dialog.title("Fix Filename Issues")
+        self.dialog.geometry("900x600")
+        self.dialog.transient(parent)
+        self.dialog.grab_set()
+        
+        self.create_dialog_widgets()
+        self.populate_fixes()
+        
+        # Center the dialog
+        self.dialog.update_idletasks()
+        x = (self.dialog.winfo_screenwidth() // 2) - (self.dialog.winfo_width() // 2)
+        y = (self.dialog.winfo_screenheight() // 2) - (self.dialog.winfo_height() // 2)
+        self.dialog.geometry(f"+{x}+{y}")
+    
+    def create_dialog_widgets(self):
+        """Create the dialog widgets"""
+        # Header
+        header_frame = ttk.Frame(self.dialog)
+        header_frame.pack(fill='x', padx=10, pady=10)
+        
+        ttk.Label(header_frame, text="Filename Issues Found", 
+                 font=("Arial", 14, "bold")).pack()
+        ttk.Label(header_frame, text="Review suggested fixes and select which ones to apply:", 
+                 font=("Arial", 10)).pack()
+        
+        # Main content frame with scrollbar
+        main_frame = ttk.Frame(self.dialog)
+        main_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        
+        # Create canvas and scrollbar for scrolling
+        canvas = tk.Canvas(main_frame)
+        scrollbar = ttk.Scrollbar(main_frame, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+        
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Bind mouse wheel to canvas
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        # Bottom buttons
+        button_frame = ttk.Frame(self.dialog)
+        button_frame.pack(fill='x', padx=10, pady=10)
+        
+        ttk.Button(button_frame, text="Apply Selected Fixes", 
+                  command=self.apply_fixes).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Select All", 
+                  command=self.select_all).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Deselect All", 
+                  command=self.deselect_all).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Cancel", 
+                  command=self.dialog.destroy).pack(side='right', padx=5)
+    
+    def populate_fixes(self):
+        """Populate the dialog with file issues and suggested fixes"""
+        self.checkboxes = {}
+        
+        for i, (filepath, issues) in enumerate(self.validation_results.items()):
+            # Get suggested fix
+            suggested_fix = self.validator.suggest_filename_fix(filepath)
+            
+            if not suggested_fix:
+                continue  # Skip if no fix can be suggested
+            
+            # Create frame for this file
+            file_frame = ttk.LabelFrame(self.scrollable_frame, text=f"File {i+1}", padding="5")
+            file_frame.pack(fill='x', padx=5, pady=5)
+            
+            # Original filename
+            orig_frame = ttk.Frame(file_frame)
+            orig_frame.pack(fill='x', pady=2)
+            ttk.Label(orig_frame, text="Original:", font=("Arial", 9, "bold")).pack(side='left')
+            ttk.Label(orig_frame, text=os.path.basename(filepath), 
+                     font=("Arial", 9), wraplength=600).pack(side='left', padx=5)
+            
+            # Issues
+            issues_frame = ttk.Frame(file_frame)
+            issues_frame.pack(fill='x', pady=2)
+            ttk.Label(issues_frame, text="Issues:", font=("Arial", 9, "bold")).pack(side='left')
+            issues_text = "; ".join(issues)
+            ttk.Label(issues_frame, text=issues_text, font=("Arial", 9), 
+                     foreground="red", wraplength=600).pack(side='left', padx=5)
+            
+            # Suggested fix
+            fix_frame = ttk.Frame(file_frame)
+            fix_frame.pack(fill='x', pady=2)
+            ttk.Label(fix_frame, text="Suggested:", font=("Arial", 9, "bold")).pack(side='left')
+            ttk.Label(fix_frame, text=suggested_fix, font=("Arial", 9), 
+                     foreground="green", wraplength=600).pack(side='left', padx=5)
+            
+            # Checkbox to apply fix
+            checkbox_frame = ttk.Frame(file_frame)
+            checkbox_frame.pack(fill='x', pady=2)
+            var = tk.BooleanVar()
+            checkbox = ttk.Checkbutton(checkbox_frame, text="Apply this fix", variable=var)
+            checkbox.pack(side='left')
+            
+            self.checkboxes[filepath] = (var, suggested_fix)
+    
+    def select_all(self):
+        """Select all checkboxes"""
+        for var, _ in self.checkboxes.values():
+            var.set(True)
+    
+    def deselect_all(self):
+        """Deselect all checkboxes"""
+        for var, _ in self.checkboxes.values():
+            var.set(False)
+    
+    def apply_fixes(self):
+        """Apply the selected filename fixes"""
+        selected_fixes = []
+        
+        for filepath, (var, suggested_fix) in self.checkboxes.items():
+            if var.get():
+                selected_fixes.append((filepath, suggested_fix))
+        
+        if not selected_fixes:
+            messagebox.showinfo("No Fixes Selected", "Please select at least one fix to apply.")
+            return
+        
+        # Confirm with user
+        count = len(selected_fixes)
+        if not messagebox.askyesno("Confirm Fixes", 
+                                  f"Apply {count} filename fix(es)?\n\nThis will rename the selected files."):
+            return
+        
+        # Apply fixes
+        success_count = 0
+        error_count = 0
+        
+        for filepath, new_filename in selected_fixes:
+            try:
+                directory = os.path.dirname(filepath)
+                new_filepath = os.path.join(directory, new_filename)
+                
+                # Check if target file already exists
+                if os.path.exists(new_filepath):
+                    self.log_function(f"Skipped {os.path.basename(filepath)}: Target filename already exists")
+                    error_count += 1
+                    continue
+                
+                # Rename the file
+                os.rename(filepath, new_filepath)
+                self.log_function(f"Renamed: {os.path.basename(filepath)} → {new_filename}")
+                success_count += 1
+                
+            except Exception as e:
+                self.log_function(f"Error renaming {os.path.basename(filepath)}: {e}")
+                error_count += 1
+        
+        # Show results
+        if success_count > 0:
+            messagebox.showinfo("Fixes Applied", 
+                               f"Successfully renamed {success_count} file(s).\n"
+                               f"Errors: {error_count}\n\n"
+                               f"Check the Status log for details.")
+        else:
+            messagebox.showwarning("No Fixes Applied", 
+                                  f"No files were renamed due to errors.\n"
+                                  f"Check the Status log for details.")
+        
+        # Close dialog
+        self.dialog.destroy()
+
 class MediaManagerGUI:
     def __init__(self, root):
         self.root = root
@@ -145,6 +329,11 @@ class MediaManagerGUI:
         ttk.Button(ops_frame, text="Check Windows Filename Compatibility", 
                   command=self.check_windows_filenames_threaded,
                   width=35).pack(pady=5)
+        
+        # Filename fixing button
+        ttk.Button(ops_frame, text="View & Fix Filename Issues", 
+                  command=self.view_and_fix_filenames,
+                  width=25).pack(pady=5)
         
         # Run all button
         ttk.Button(ops_frame, text="Run Complete Check", 
@@ -588,7 +777,11 @@ class MediaManagerGUI:
                         log_function=self.log_message
                     )
                 else:
-                    self.log_message("Email not configured - skipping email notification")
+                    # Check if email is disabled vs not configured
+                    if not self.config.get("email", {}).get("enabled", False):
+                        self.log_message("Email notifications are disabled. Enable and configure via Email Configuration tab - skipping email notification")
+                    else:
+                        self.log_message("Email not properly configured. Configure via Email Configuration tab - skipping email notification")
                 
             else:
                 self.log_message("No missing media files found")
@@ -726,6 +919,50 @@ class MediaManagerGUI:
             self.log_message(f"Error checking Windows filenames: {e}")
         finally:
             self.stop_operation()
+    
+    def view_and_fix_filenames(self):
+        """Open dialog to view and fix filename issues"""
+        try:
+            output_dir = self.output_var.get()
+            filename_issues_dir = os.path.join(output_dir, "filename_issues")
+            
+            if not os.path.exists(filename_issues_dir):
+                messagebox.showinfo("No Issues Found", 
+                    "No filename issues directory found. Run 'Check Windows Filename Compatibility' first.")
+                return
+            
+            # Find the most recent filename issues report
+            pattern = os.path.join(filename_issues_dir, 'windows_filename_issues_*.txt')
+            files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+            
+            if not files:
+                messagebox.showinfo("No Issues Found", 
+                    "No filename issues reports found. Run 'Check Windows Filename Compatibility' first.")
+                return
+            
+            # Load the most recent media list to get current files
+            media_lists_dir = os.path.join(output_dir, "media_lists")
+            media_pattern = os.path.join(media_lists_dir, 'media_list_*.txt')
+            media_files = sorted(glob.glob(media_pattern), key=os.path.getmtime, reverse=True)
+            
+            if not media_files:
+                messagebox.showwarning("No Media List", 
+                    "No media list found. Generate a media list first.")
+                return
+            
+            # Validate current files and get suggestions
+            validator = WindowsFilenameValidator()
+            validation_results = validator.validate_from_file(media_files[0])
+            
+            if not validation_results:
+                messagebox.showinfo("No Issues", "No filename issues found in the current media list!")
+                return
+            
+            # Open the filename fixing dialog
+            dialog = FilenameFixDialog(self.root, validation_results, validator, self.log_message)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error opening filename fix dialog: {e}")
     
     def is_email_configured(self):
         """Check if email is enabled and properly configured"""
