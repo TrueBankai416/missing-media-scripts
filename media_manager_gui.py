@@ -484,11 +484,12 @@ class MediaManagerGUI:
         thread.start()
     
     def run_complete_check(self):
-        """Run a complete check (generate list, check missing, manage files)"""
+        """Run a complete check (generate list, check missing, manage files, validate Windows filenames)"""
         self.log_message("Starting complete check...")
         self.generate_media_list()
         self.check_missing_media()
         self.manage_files()
+        self.check_windows_filenames()
         self.log_message("Complete check finished")
     
     def check_windows_filenames_threaded(self):
