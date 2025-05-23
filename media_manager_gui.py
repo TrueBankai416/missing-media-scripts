@@ -24,7 +24,7 @@ class MediaManagerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Media Manager - Windows GUI")
-        self.root.geometry("800x600")
+        self.root.geometry("800x650")
         
         # Configuration file path
         self.config_file = "media_manager_config.json"
