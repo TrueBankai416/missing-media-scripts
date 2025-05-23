@@ -50,11 +50,12 @@ Check Windows Filenames: Weekly at 06:30
 ```
 
 #### Complete Check (Recommended)
-Enable "Run Complete Check" to execute all operations in sequence at a single time. This overrides individual task settings and is the most efficient approach.
+Enable "Run Complete Check" to execute core operations in sequence at a single time. This overrides individual task settings for the core operations and is the most efficient approach.
 
 ```
 Complete Check: Daily at 05:00
-(Runs all operations: generate → check missing → manage files → check filenames)
+(Runs core operations: generate → check missing → manage files)
+Note: Filename checking runs separately if enabled
 ```
 
 ### Time Format

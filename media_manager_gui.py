@@ -608,7 +608,7 @@ class MediaManagerGUI:
             },
             "complete_check": {
                 "name": "Run Complete Check",
-                "description": "Run all operations in sequence (overrides individual tasks)"
+                "description": "Run core operations in sequence: generate lists, check missing media, manage files (excludes filename checking)"
             }
         }
         
@@ -625,7 +625,8 @@ class MediaManagerGUI:
         warning_frame.pack(fill='x', pady=10)
         
         warning_text = ("⚠️ Note: If 'Run Complete Check' is enabled, it will override individual task settings. "
-                       "All operations will run in sequence at the specified time.")
+                       "Core operations (generate lists, check missing media, manage files) will run in sequence at the specified time. "
+                       "Filename checking runs separately if enabled.")
         ttk.Label(warning_frame, text=warning_text, font=("Arial", 9), 
                  foreground="orange", wraplength=700, justify='left').pack(anchor='w')
         
@@ -1421,12 +1422,11 @@ class MediaManagerGUI:
         thread.start()
     
     def run_complete_check(self):
-        """Run a complete check (generate list, check missing, manage files, validate Windows filenames)"""
+        """Run a complete check (generate list, check missing, manage files - excludes filename checking)"""
         self.log_message("Starting complete check...")
         self.generate_media_list()
         self.check_missing_media()
         self.manage_files()
-        self.check_windows_filenames()
         self.log_message("Complete check finished")
     
     def check_windows_filenames_threaded(self):
@@ -1865,7 +1865,7 @@ def run_headless_check_windows_filenames(config, log_function):
         return False
 
 def run_headless_complete_check(config, log_function):
-    """Run complete check headlessly"""
+    """Run complete check headlessly (excludes filename checking)"""
     try:
         log_function("Starting complete check...")
         
@@ -1873,7 +1873,6 @@ def run_headless_complete_check(config, log_function):
         success &= run_headless_generate_media_list(config, log_function)
         success &= run_headless_check_missing_media(config, log_function)
         success &= run_headless_manage_files(config, log_function)
-        success &= run_headless_check_windows_filenames(config, log_function)
         
         log_function("Complete check finished")
         return success
