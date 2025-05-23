@@ -176,6 +176,7 @@ class MediaManagerGUI:
         
         # Email fields
         email_fields = [
+            ("Sender Name:", "sender_name"),
             ("Sender Email:", "sender_email"),
             ("Receiver Email:", "receiver_email"),
             ("Password:", "password"),
