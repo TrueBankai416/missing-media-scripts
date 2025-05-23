@@ -2,7 +2,7 @@
 Scripts to compare lists of media and send an email if something is missing from the list
 
 # Notice
-You will first have to open `generate_missing_media_list.py` and configure your email.
+You will first have to open `generate_missing_media_list.py` and configure your email settings. This includes setting your sender name, sender email, receiver email, password, and SMTP server details.
 
 The `generate_missing_media_list.py` script will only detect a change if the file name or path changes.
 
