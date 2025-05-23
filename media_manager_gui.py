@@ -414,6 +414,7 @@ class MediaManagerGUI:
                 
                 # Send email if configured
                 if self.is_email_configured():
+                    self.log_message("Attempting to send email notification...")
                     success = send_missing_media_email(
                         missing_titles, 
                         config_file="media_manager_config.json",
