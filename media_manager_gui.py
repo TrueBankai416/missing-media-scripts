@@ -12,6 +12,10 @@ import threading
 import datetime
 import glob
 import re
+import platform
+import subprocess
+import sys
+import argparse
 from email_utils import send_missing_media_email, load_email_config_from_file
 from pathlib import Path
 
@@ -236,7 +240,37 @@ class MediaManagerGUI:
                 "smtp_server": "smtp.gmail.com",
                 "smtp_port": 587
             },
-            "file_retention_count": 100
+            "file_retention_count": 100,
+            "automation": {
+                "enabled": False,
+                "tasks": {
+                    "generate_media_list": {
+                        "enabled": False,
+                        "time": "05:00",
+                        "frequency": "daily"
+                    },
+                    "check_missing_media": {
+                        "enabled": False,
+                        "time": "05:30",
+                        "frequency": "daily"
+                    },
+                    "manage_file_retention": {
+                        "enabled": False,
+                        "time": "06:00",
+                        "frequency": "daily"
+                    },
+                    "check_windows_filenames": {
+                        "enabled": False,
+                        "time": "06:30",
+                        "frequency": "daily"
+                    },
+                    "complete_check": {
+                        "enabled": False,
+                        "time": "05:00",
+                        "frequency": "daily"
+                    }
+                }
+            }
         }
         
         try:
@@ -248,12 +282,22 @@ class MediaManagerGUI:
                         if key not in config:
                             config[key] = default_config[key]
                     
-                    # Handle nested dictionaries (email, file_extensions)
-                    for nested_key in ["email", "file_extensions"]:
+                    # Handle nested dictionaries (email, file_extensions, automation)
+                    for nested_key in ["email", "file_extensions", "automation"]:
                         if nested_key in config and isinstance(config[nested_key], dict):
                             for sub_key in default_config[nested_key]:
                                 if sub_key not in config[nested_key]:
                                     config[nested_key][sub_key] = default_config[nested_key][sub_key]
+                        
+                        # Special handling for automation tasks
+                        if nested_key == "automation" and "tasks" in default_config[nested_key]:
+                            if "tasks" not in config.get(nested_key, {}):
+                                config.setdefault(nested_key, {})["tasks"] = default_config[nested_key]["tasks"]
+                            else:
+                                # Merge individual task configurations
+                                for task_id, task_config in default_config[nested_key]["tasks"].items():
+                                    if task_id not in config[nested_key]["tasks"]:
+                                        config[nested_key]["tasks"][task_id] = task_config
                     
                     # Backward compatibility: if email.enabled doesn't exist, default to False
                     if "enabled" not in config.get("email", {}):
@@ -291,6 +335,10 @@ class MediaManagerGUI:
         self.email_frame = ttk.Frame(notebook)
         notebook.add(self.email_frame, text="Email Configuration")
         
+        # Automation tab
+        self.automation_frame = ttk.Frame(notebook)
+        notebook.add(self.automation_frame, text="Automation")
+        
         # Logs tab
         self.logs_frame = ttk.Frame(notebook)
         notebook.add(self.logs_frame, text="Logs & Results")
@@ -298,6 +346,7 @@ class MediaManagerGUI:
         self.create_main_tab()
         self.create_config_tab()
         self.create_email_tab()
+        self.create_automation_tab()
         self.create_logs_tab()
     
     def create_main_tab(self):
@@ -488,6 +537,165 @@ class MediaManagerGUI:
         for entry in self.email_entries.values():
             entry.config(state=state)
     
+    def create_automation_tab(self):
+        """Create the automation configuration tab"""
+        # Enable/Disable Automation section
+        enable_frame = ttk.LabelFrame(self.automation_frame, text="Task Automation", padding="10")
+        enable_frame.pack(fill='x', padx=10, pady=5)
+        
+        self.automation_enabled_var = tk.BooleanVar()
+        self.automation_enabled_checkbox = ttk.Checkbutton(
+            enable_frame, 
+            text="Enable task automation", 
+            variable=self.automation_enabled_var,
+            command=self.toggle_automation_fields
+        )
+        self.automation_enabled_checkbox.pack(anchor='w')
+        
+        # Platform info
+        platform_info = ttk.Frame(enable_frame)
+        platform_info.pack(fill='x', pady=5)
+        
+        current_platform = platform.system()
+        platform_text = f"Detected platform: {current_platform}"
+        if current_platform == "Windows":
+            platform_text += " (will use Windows Task Scheduler)"
+        elif current_platform == "Linux":
+            platform_text += " (will use cron)"
+        else:
+            platform_text += " (may not be fully supported)"
+        
+        ttk.Label(platform_info, text=platform_text, font=("Arial", 9), 
+                 foreground="gray").pack(anchor='w')
+        
+        # Automated Tasks section
+        tasks_frame = ttk.LabelFrame(self.automation_frame, text="Automated Tasks", padding="10")
+        tasks_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        
+        # Create a scrollable frame for tasks
+        canvas = tk.Canvas(tasks_frame)
+        scrollbar = ttk.Scrollbar(tasks_frame, orient="vertical", command=canvas.yview)
+        self.tasks_scrollable_frame = ttk.Frame(canvas)
+        
+        self.tasks_scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=self.tasks_scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Task definitions
+        self.task_definitions = {
+            "generate_media_list": {
+                "name": "Generate Media List",
+                "description": "Scan directories and create a new media list file"
+            },
+            "check_missing_media": {
+                "name": "Check for Missing Media",
+                "description": "Compare recent lists and identify missing files"
+            },
+            "manage_file_retention": {
+                "name": "Manage File Retention",
+                "description": "Clean up old list files (keep only latest N files)"
+            },
+            "check_windows_filenames": {
+                "name": "Check Windows Filename Compatibility",
+                "description": "Validate filenames for Windows compatibility"
+            },
+            "complete_check": {
+                "name": "Run Complete Check",
+                "description": "Run all operations in sequence: generate lists, check missing media, manage files, detect filename issues (does not auto-fix)"
+            }
+        }
+        
+        self.task_vars = {}
+        self.task_time_vars = {}
+        self.task_freq_vars = {}
+        self.task_widgets = {}
+        
+        for task_id, task_info in self.task_definitions.items():
+            self.create_task_configuration(task_id, task_info)
+        
+        # Warning for complete check
+        warning_frame = ttk.Frame(self.tasks_scrollable_frame)
+        warning_frame.pack(fill='x', pady=10)
+        
+        warning_text = ("⚠️ Note: If 'Run Complete Check' is enabled, it will override individual task settings. "
+                       "All operations will run in sequence at the specified time. "
+                       "Filename checking only detects issues and creates reports - it does NOT automatically rename files.")
+        ttk.Label(warning_frame, text=warning_text, font=("Arial", 9), 
+                 foreground="orange", wraplength=700, justify='left').pack(anchor='w')
+        
+        # Control buttons
+        button_frame = ttk.Frame(self.automation_frame)
+        button_frame.pack(fill='x', padx=10, pady=10)
+        
+        ttk.Button(button_frame, text="Save Automation Settings", 
+                  command=self.save_automation_settings).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Apply Scheduled Tasks", 
+                  command=self.apply_scheduled_tasks).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Remove All Scheduled Tasks", 
+                  command=self.remove_scheduled_tasks).pack(side='left', padx=5)
+        ttk.Button(button_frame, text="Test Task Creation", 
+                  command=self.test_task_creation).pack(side='left', padx=5)
+    
+    def create_task_configuration(self, task_id, task_info):
+        """Create configuration widgets for a single task"""
+        task_frame = ttk.LabelFrame(self.tasks_scrollable_frame, text=task_info["name"], padding="10")
+        task_frame.pack(fill='x', pady=5)
+        
+        # Description
+        desc_frame = ttk.Frame(task_frame)
+        desc_frame.pack(fill='x', pady=2)
+        ttk.Label(desc_frame, text=task_info["description"], font=("Arial", 9), 
+                 foreground="gray").pack(anchor='w')
+        
+        # Controls frame
+        controls_frame = ttk.Frame(task_frame)
+        controls_frame.pack(fill='x', pady=5)
+        
+        # Enable checkbox
+        self.task_vars[task_id] = tk.BooleanVar()
+        enable_cb = ttk.Checkbutton(controls_frame, text="Enable", 
+                                   variable=self.task_vars[task_id])
+        enable_cb.pack(side='left', padx=5)
+        
+        # Time setting
+        ttk.Label(controls_frame, text="Time:").pack(side='left', padx=(20, 5))
+        self.task_time_vars[task_id] = tk.StringVar()
+        time_entry = ttk.Entry(controls_frame, textvariable=self.task_time_vars[task_id], width=8)
+        time_entry.pack(side='left', padx=5)
+        ttk.Label(controls_frame, text="(HH:MM 24-hour format)", font=("Arial", 8), 
+                 foreground="gray").pack(side='left', padx=5)
+        
+        # Frequency setting
+        ttk.Label(controls_frame, text="Frequency:").pack(side='left', padx=(20, 5))
+        self.task_freq_vars[task_id] = tk.StringVar()
+        freq_combo = ttk.Combobox(controls_frame, textvariable=self.task_freq_vars[task_id], 
+                                 values=["daily", "weekly"], state="readonly", width=10)
+        freq_combo.pack(side='left', padx=5)
+        
+        # Store widgets for later access
+        self.task_widgets[task_id] = {
+            'frame': task_frame,
+            'enable_cb': enable_cb,
+            'time_entry': time_entry,
+            'freq_combo': freq_combo
+        }
+    
+    def toggle_automation_fields(self):
+        """Enable/disable automation fields based on checkbox state"""
+        state = 'normal' if self.automation_enabled_var.get() else 'disabled'
+        
+        for task_widgets in self.task_widgets.values():
+            task_widgets['enable_cb'].config(state=state)
+            task_widgets['time_entry'].config(state=state)
+            task_widgets['freq_combo'].config(state=state)
+    
     def create_logs_tab(self):
         """Create the logs and results tab"""
         # Filter frame
@@ -566,8 +774,20 @@ class MediaManagerGUI:
         # Load retention setting
         self.retention_var.set(str(self.config["file_retention_count"]))
         
-        # Update email field states based on enabled checkbox
+        # Load automation settings
+        automation_config = self.config.get("automation", {})
+        self.automation_enabled_var.set(automation_config.get("enabled", False))
+        
+        tasks_config = automation_config.get("tasks", {})
+        for task_id in self.task_definitions.keys():
+            task_config = tasks_config.get(task_id, {})
+            self.task_vars[task_id].set(task_config.get("enabled", False))
+            self.task_time_vars[task_id].set(task_config.get("time", "05:00"))
+            self.task_freq_vars[task_id].set(task_config.get("frequency", "daily"))
+        
+        # Update field states based on enabled checkboxes
         self.toggle_email_fields()
+        self.toggle_automation_fields()
         
         # Refresh file list
         self.refresh_file_list()
@@ -641,6 +861,358 @@ class MediaManagerGUI:
             
         except Exception as e:
             messagebox.showerror("Error", f"Error saving email configuration: {e}")
+    
+    def save_automation_settings(self):
+        """Save automation configuration settings"""
+        try:
+            # Validate time formats first
+            for task_id, time_var in self.task_time_vars.items():
+                time_str = time_var.get().strip()
+                if time_str and self.task_vars[task_id].get():
+                    if not re.match(r'^([01]?[0-9]|2[0-3]):[0-5][0-9]$', time_str):
+                        messagebox.showerror("Invalid Time Format", 
+                            f"Task '{self.task_definitions[task_id]['name']}' has invalid time format.\n"
+                            f"Please use HH:MM format (24-hour), e.g., 05:30")
+                        return
+            
+            # Save automation enabled state
+            self.config["automation"]["enabled"] = self.automation_enabled_var.get()
+            
+            # Save task settings
+            for task_id in self.task_definitions.keys():
+                task_config = {
+                    "enabled": self.task_vars[task_id].get(),
+                    "time": self.task_time_vars[task_id].get().strip() or "05:00",
+                    "frequency": self.task_freq_vars[task_id].get() or "daily"
+                }
+                self.config["automation"]["tasks"][task_id] = task_config
+            
+            self.save_config()
+            messagebox.showinfo("Success", "Automation configuration saved successfully!\n\n"
+                              "Use 'Apply Scheduled Tasks' to create the actual scheduled tasks on your system.")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error saving automation configuration: {e}")
+    
+    def apply_scheduled_tasks(self):
+        """Apply the scheduled tasks to the system"""
+        if not self.automation_enabled_var.get():
+            messagebox.showwarning("Automation Disabled", 
+                "Automation is disabled. Enable it first and save the configuration.")
+            return
+        
+        try:
+            current_platform = platform.system()
+            
+            # Check if any tasks are enabled
+            enabled_tasks = [task_id for task_id in self.task_definitions.keys() 
+                           if self.task_vars[task_id].get()]
+            
+            if not enabled_tasks:
+                messagebox.showwarning("No Tasks Enabled", 
+                    "No tasks are enabled. Please enable at least one task.")
+                return
+            
+            # Get the path to the current script
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            python_executable = sys.executable
+            
+            success_count = 0
+            error_count = 0
+            
+            # Handle complete check override
+            if self.task_vars["complete_check"].get():
+                self.log_message("Complete check is enabled - creating single scheduled task")
+                task_config = self.config["automation"]["tasks"]["complete_check"]
+                
+                success = self.create_scheduled_task(
+                    "MediaManager_CompleteCheck",
+                    "Media Manager - Complete Check",
+                    python_executable,
+                    os.path.join(script_dir, "media_manager_gui.py"),
+                    "--automated-complete-check",
+                    task_config["time"],
+                    task_config["frequency"]
+                )
+                
+                if success:
+                    success_count += 1
+                    self.log_message("✓ Complete check task scheduled successfully")
+                else:
+                    error_count += 1
+                    self.log_message("✗ Failed to schedule complete check task")
+            else:
+                # Create individual tasks
+                for task_id in enabled_tasks:
+                    if task_id == "complete_check":
+                        continue  # Skip if not the complete check override
+                    
+                    task_config = self.config["automation"]["tasks"][task_id]
+                    task_name = f"MediaManager_{task_id}"
+                    task_description = f"Media Manager - {self.task_definitions[task_id]['name']}"
+                    
+                    success = self.create_scheduled_task(
+                        task_name,
+                        task_description,
+                        python_executable,
+                        os.path.join(script_dir, "media_manager_gui.py"),
+                        f"--automated-{task_id.replace('_', '-')}",
+                        task_config["time"],
+                        task_config["frequency"]
+                    )
+                    
+                    if success:
+                        success_count += 1
+                        self.log_message(f"✓ {self.task_definitions[task_id]['name']} scheduled successfully")
+                    else:
+                        error_count += 1
+                        self.log_message(f"✗ Failed to schedule {self.task_definitions[task_id]['name']}")
+            
+            # Show results
+            if success_count > 0:
+                messagebox.showinfo("Tasks Applied", 
+                    f"Successfully created {success_count} scheduled task(s).\n"
+                    f"Errors: {error_count}\n\n"
+                    f"Check the Status log for details.")
+            else:
+                messagebox.showerror("Failed", 
+                    f"Failed to create any scheduled tasks.\n"
+                    f"Check the Status log for details.")
+                
+        except Exception as e:
+            self.log_message(f"Error applying scheduled tasks: {e}")
+            messagebox.showerror("Error", f"Error applying scheduled tasks: {e}")
+    
+    def create_scheduled_task(self, task_name, description, executable, script_path, args, time_str, frequency):
+        """Create a platform-specific scheduled task"""
+        try:
+            current_platform = platform.system()
+            
+            if current_platform == "Windows":
+                return self.create_windows_task(task_name, description, executable, script_path, args, time_str, frequency)
+            elif current_platform == "Linux":
+                return self.create_linux_cron_job(task_name, description, executable, script_path, args, time_str, frequency)
+            else:
+                self.log_message(f"Platform {current_platform} is not supported for automation")
+                return False
+                
+        except Exception as e:
+            self.log_message(f"Error creating scheduled task {task_name}: {e}")
+            return False
+    
+    def create_windows_task(self, task_name, description, executable, script_path, args, time_str, frequency):
+        """Create a Windows Task Scheduler task"""
+        try:
+            # Build schtasks command
+            cmd = [
+                "schtasks", "/Create",
+                "/TN", task_name,
+                "/TR", f'"{executable}" "{script_path}" {args}',
+                "/ST", time_str,
+                "/F"  # Force overwrite if exists
+            ]
+            
+            if frequency == "daily":
+                cmd.extend(["/SC", "DAILY"])
+            elif frequency == "weekly":
+                cmd.extend(["/SC", "WEEKLY"])
+            
+            # Execute command
+            result = subprocess.run(cmd, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+            
+            if result.returncode == 0:
+                return True
+            else:
+                self.log_message(f"Windows task creation failed: {result.stderr}")
+                return False
+                
+        except Exception as e:
+            self.log_message(f"Error creating Windows task: {e}")
+            return False
+    
+    def create_linux_cron_job(self, task_name, description, executable, script_path, args, time_str, frequency):
+        """Create a Linux cron job"""
+        try:
+            # Parse time string
+            hour, minute = time_str.split(':')
+            
+            # Build cron expression
+            if frequency == "daily":
+                cron_time = f"{minute} {hour} * * *"
+            elif frequency == "weekly":
+                cron_time = f"{minute} {hour} * * 0"  # Sunday
+            else:
+                cron_time = f"{minute} {hour} * * *"  # Default to daily
+            
+            # Create cron entry
+            cron_entry = f'{cron_time} "{executable}" "{script_path}" {args} # MediaManager: {task_name}\n'
+            
+            # Get current crontab
+            try:
+                result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+                current_crontab = result.stdout if result.returncode == 0 else ""
+            except:
+                current_crontab = ""
+            
+            # Remove existing MediaManager entries for this task
+            lines = current_crontab.split('\n')
+            filtered_lines = [line for line in lines if f"# MediaManager: {task_name}" not in line]
+            
+            # Add new entry
+            filtered_lines.append(cron_entry.strip())
+            new_crontab = '\n'.join([line for line in filtered_lines if line.strip()])
+            
+            # Apply new crontab
+            process = subprocess.Popen(["crontab", "-"], stdin=subprocess.PIPE, text=True)
+            process.communicate(input=new_crontab)
+            
+            if process.returncode == 0:
+                return True
+            else:
+                self.log_message("Failed to update crontab")
+                return False
+                
+        except Exception as e:
+            self.log_message(f"Error creating Linux cron job: {e}")
+            return False
+    
+    def remove_scheduled_tasks(self):
+        """Remove all MediaManager scheduled tasks"""
+        try:
+            current_platform = platform.system()
+            
+            if current_platform == "Windows":
+                success = self.remove_windows_tasks()
+            elif current_platform == "Linux":
+                success = self.remove_linux_cron_jobs()
+            else:
+                messagebox.showerror("Unsupported Platform", 
+                    f"Platform {current_platform} is not supported for automation")
+                return
+            
+            if success:
+                messagebox.showinfo("Tasks Removed", 
+                    "All MediaManager scheduled tasks have been removed successfully.")
+                self.log_message("All scheduled tasks removed successfully")
+            else:
+                messagebox.showwarning("Partial Success", 
+                    "Some tasks may not have been removed. Check the Status log for details.")
+                
+        except Exception as e:
+            self.log_message(f"Error removing scheduled tasks: {e}")
+            messagebox.showerror("Error", f"Error removing scheduled tasks: {e}")
+    
+    def remove_windows_tasks(self):
+        """Remove Windows Task Scheduler tasks"""
+        try:
+            success = True
+            task_names = [f"MediaManager_{task_id}" for task_id in self.task_definitions.keys()]
+            
+            for task_name in task_names:
+                try:
+                    cmd = ["schtasks", "/Delete", "/TN", task_name, "/F"]
+                    result = subprocess.run(cmd, capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                    
+                    if result.returncode == 0:
+                        self.log_message(f"✓ Removed task: {task_name}")
+                    else:
+                        # Task might not exist, which is fine
+                        if "cannot find the file" not in result.stderr.lower():
+                            self.log_message(f"✗ Failed to remove task {task_name}: {result.stderr}")
+                            success = False
+                except Exception as e:
+                    self.log_message(f"✗ Error removing task {task_name}: {e}")
+                    success = False
+            
+            return success
+            
+        except Exception as e:
+            self.log_message(f"Error removing Windows tasks: {e}")
+            return False
+    
+    def remove_linux_cron_jobs(self):
+        """Remove Linux cron jobs"""
+        try:
+            # Get current crontab
+            try:
+                result = subprocess.run(["crontab", "-l"], capture_output=True, text=True)
+                current_crontab = result.stdout if result.returncode == 0 else ""
+            except:
+                current_crontab = ""
+            
+            if not current_crontab:
+                self.log_message("No crontab entries found")
+                return True
+            
+            # Remove MediaManager entries
+            lines = current_crontab.split('\n')
+            filtered_lines = [line for line in lines if "# MediaManager:" not in line]
+            
+            # Apply new crontab
+            new_crontab = '\n'.join([line for line in filtered_lines if line.strip()])
+            
+            process = subprocess.Popen(["crontab", "-"], stdin=subprocess.PIPE, text=True)
+            process.communicate(input=new_crontab)
+            
+            if process.returncode == 0:
+                self.log_message("✓ Removed all MediaManager cron jobs")
+                return True
+            else:
+                self.log_message("✗ Failed to update crontab")
+                return False
+                
+        except Exception as e:
+            self.log_message(f"Error removing Linux cron jobs: {e}")
+            return False
+    
+    def test_task_creation(self):
+        """Test the task creation functionality without actually scheduling"""
+        try:
+            current_platform = platform.system()
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            python_executable = sys.executable
+            
+            self.log_message(f"Testing task creation on {current_platform}...")
+            self.log_message(f"Python executable: {python_executable}")
+            self.log_message(f"Script directory: {script_dir}")
+            
+            # Test command that would be created
+            if current_platform == "Windows":
+                test_cmd = f'"{python_executable}" "{os.path.join(script_dir, "media_manager_gui.py")}" --automated-test'
+                self.log_message(f"Test Windows command: {test_cmd}")
+                
+                # Test if schtasks is available
+                try:
+                    result = subprocess.run(["schtasks", "/?"], capture_output=True, text=True, creationflags=subprocess.CREATE_NO_WINDOW)
+                    if result.returncode == 0:
+                        self.log_message("✓ Windows Task Scheduler (schtasks) is available")
+                    else:
+                        self.log_message("✗ Windows Task Scheduler (schtasks) not available")
+                except Exception as e:
+                    self.log_message(f"✗ Error testing schtasks: {e}")
+                    
+            elif current_platform == "Linux":
+                test_cmd = f'"{python_executable}" "{os.path.join(script_dir, "media_manager_gui.py")}" --automated-test'
+                self.log_message(f"Test Linux command: {test_cmd}")
+                
+                # Test if crontab is available
+                try:
+                    result = subprocess.run(["which", "crontab"], capture_output=True, text=True)
+                    if result.returncode == 0:
+                        self.log_message("✓ crontab is available")
+                    else:
+                        self.log_message("✗ crontab not available")
+                except Exception as e:
+                    self.log_message(f"✗ Error testing crontab: {e}")
+            else:
+                self.log_message(f"✗ Platform {current_platform} is not supported")
+            
+            messagebox.showinfo("Test Complete", 
+                "Task creation test completed. Check the Status log for details.")
+            
+        except Exception as e:
+            self.log_message(f"Error during test: {e}")
+            messagebox.showerror("Test Error", f"Error during test: {e}")
     
     def add_directory(self):
         """Add a directory to scan"""
@@ -850,7 +1422,7 @@ class MediaManagerGUI:
         thread.start()
     
     def run_complete_check(self):
-        """Run a complete check (generate list, check missing, manage files, validate Windows filenames)"""
+        """Run a complete check (generate list, check missing, manage files, detect filename issues)"""
         self.log_message("Starting complete check...")
         self.generate_media_list()
         self.check_missing_media()
@@ -1089,18 +1661,293 @@ class MediaManagerGUI:
         except Exception as e:
             messagebox.showerror("Error", f"Error opening folder: {e}")
 
-def main():
-    """Main function to run the GUI application"""
-    root = tk.Tk()
-    app = MediaManagerGUI(root)
-    
-    # Set window icon if available
+def run_headless_operation(operation, config_file="media_manager_config.json"):
+    """Run an operation headlessly (without GUI) for automation"""
     try:
-        root.iconbitmap('icon.ico')
-    except:
-        pass  # Icon file not found, continue without it
+        # Load configuration
+        if not os.path.exists(config_file):
+            print(f"Error: Configuration file {config_file} not found")
+            return False
+        
+        with open(config_file, 'r', encoding='utf-8') as f:
+            config = json.load(f)
+        
+        # Create a simple logger function
+        def log_print(message):
+            timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            print(f"[{timestamp}] {message}")
+        
+        log_print(f"Starting automated operation: {operation}")
+        
+        if operation == "generate-media-list":
+            return run_headless_generate_media_list(config, log_print)
+        elif operation == "check-missing-media":
+            return run_headless_check_missing_media(config, log_print)
+        elif operation == "manage-file-retention":
+            return run_headless_manage_files(config, log_print)
+        elif operation == "check-windows-filenames":
+            return run_headless_check_windows_filenames(config, log_print)
+        elif operation == "complete-check":
+            return run_headless_complete_check(config, log_print)
+        else:
+            log_print(f"Unknown operation: {operation}")
+            return False
+            
+    except Exception as e:
+        print(f"Error in headless operation {operation}: {e}")
+        return False
+
+def run_headless_generate_media_list(config, log_function):
+    """Generate media list headlessly"""
+    try:
+        from generate_media_list import generate_media_list
+        
+        directories = config.get("scan_directories", [])
+        if not directories:
+            log_function("Error: No directories configured for scanning")
+            return False
+        
+        # Ensure output directories exist
+        output_dir = config.get("output_directory", "lists")
+        media_lists_dir = os.path.join(output_dir, "media_lists")
+        os.makedirs(media_lists_dir, exist_ok=True)
+        
+        # Generate filename with timestamp
+        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        output_file = os.path.join(media_lists_dir, f"media_list_{timestamp}.txt")
+        
+        # Get configured file extensions
+        file_extensions = config.get("file_extensions", {})
+        all_extensions = file_extensions.get("media", []) + file_extensions.get("additional", [])
+        if not all_extensions:
+            all_extensions = ['.mp4', '.mkv', '.avi']
+        
+        log_function(f"Scanning directories: {', '.join(directories)}")
+        log_function(f"Looking for extensions: {', '.join(all_extensions)}")
+        
+        generate_media_list(directories, output_file, all_extensions)
+        log_function(f"Media list generated: {output_file}")
+        return True
+        
+    except Exception as e:
+        log_function(f"Error generating media list: {e}")
+        return False
+
+def run_headless_check_missing_media(config, log_function):
+    """Check for missing media headlessly"""
+    try:
+        from generate_missing_media_list import find_two_most_recent_media_lists
+        
+        output_dir = config.get("output_directory", "lists")
+        media_lists_dir = os.path.join(output_dir, "media_lists")
+        
+        # Find the two most recent media lists
+        most_recent, second_recent = find_two_most_recent_media_lists(media_lists_dir, 'media_list_*.txt')
+        
+        if not most_recent or not second_recent:
+            log_function("Error: Need at least 2 media lists to compare")
+            return False
+        
+        # Load titles from both files
+        def load_titles_from_file(file_path):
+            with open(file_path, 'r', encoding='utf-8') as f:
+                return set(f.read().splitlines())
+        
+        most_recent_titles = load_titles_from_file(most_recent)
+        second_recent_titles = load_titles_from_file(second_recent)
+        
+        # Find missing titles
+        missing_titles = second_recent_titles - most_recent_titles
+        
+        if missing_titles:
+            # Save missing titles
+            missing_media_dir = os.path.join(output_dir, "missing_media")
+            os.makedirs(missing_media_dir, exist_ok=True)
+            
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            missing_file = os.path.join(missing_media_dir, f"missing_media_{timestamp}.txt")
+            
+            with open(missing_file, 'w', encoding='utf-8') as f:
+                for title in sorted(missing_titles):
+                    f.write(f"{title}\n")
+            
+            log_function(f"Found {len(missing_titles)} missing media files")
+            log_function(f"Missing media list saved: {missing_file}")
+            
+            # Send email if configured
+            email_config = config.get("email", {})
+            if email_config.get("enabled", False):
+                log_function("Sending email notification...")
+                success = send_missing_media_email(
+                    missing_titles, 
+                    config_file="media_manager_config.json",
+                    log_function=log_function
+                )
+            else:
+                log_function("Email notifications disabled, skipping email")
+        else:
+            log_function("No missing media files found")
+        
+        return True
+        
+    except Exception as e:
+        log_function(f"Error checking for missing media: {e}")
+        return False
+
+def run_headless_manage_files(config, log_function):
+    """Manage file retention headlessly"""
+    try:
+        from manage_files import manage_files
+        
+        output_dir = config.get("output_directory", "lists")
+        retention_count = config.get("file_retention_count", 100)
+        
+        subdirs = ["media_lists", "missing_media", "filename_issues"]
+        total_deleted = 0
+        
+        for subdir in subdirs:
+            subdir_path = os.path.join(output_dir, subdir)
+            if os.path.exists(subdir_path):
+                kept, deleted, error = manage_files(subdir_path, retention_count)
+                if error:
+                    log_function(f"Error managing {subdir}: {error}")
+                else:
+                    log_function(f"{subdir}: Kept {kept} files, deleted {deleted} files")
+                    total_deleted += deleted
+        
+        log_function(f"File retention complete - total files deleted: {total_deleted}")
+        return True
+        
+    except Exception as e:
+        log_function(f"Error managing files: {e}")
+        return False
+
+def run_headless_check_windows_filenames(config, log_function):
+    """Check Windows filename compatibility headlessly"""
+    try:
+        from windows_filename_validator import WindowsFilenameValidator
+        
+        output_dir = config.get("output_directory", "lists")
+        media_lists_dir = os.path.join(output_dir, "media_lists")
+        
+        # Find the most recent media list
+        pattern = os.path.join(media_lists_dir, 'media_list_*.txt')
+        files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+        
+        if not files:
+            log_function("Error: No media list files found")
+            return False
+        
+        most_recent_file = files[0]
+        log_function(f"Analyzing: {os.path.basename(most_recent_file)}")
+        
+        # Validate filenames
+        validator = WindowsFilenameValidator()
+        validation_results = validator.validate_from_file(most_recent_file)
+        
+        if validation_results:
+            # Save the report
+            filename_issues_dir = os.path.join(output_dir, "filename_issues")
+            os.makedirs(filename_issues_dir, exist_ok=True)
+            
+            timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+            report_file = os.path.join(filename_issues_dir, f"windows_filename_issues_{timestamp}.txt")
+            
+            validator.generate_report(validation_results, report_file)
+            log_function(f"Found {len(validation_results)} files with Windows naming issues")
+            log_function(f"Report saved: {report_file}")
+        else:
+            log_function("All filenames are Windows compatible")
+        
+        return True
+        
+    except Exception as e:
+        log_function(f"Error checking Windows filenames: {e}")
+        return False
+
+def run_headless_complete_check(config, log_function):
+    """Run complete check headlessly (detects filename issues but does not fix them)"""
+    try:
+        log_function("Starting complete check...")
+        
+        success = True
+        success &= run_headless_generate_media_list(config, log_function)
+        success &= run_headless_check_missing_media(config, log_function)
+        success &= run_headless_manage_files(config, log_function)
+        success &= run_headless_check_windows_filenames(config, log_function)
+        
+        log_function("Complete check finished")
+        return success
+        
+    except Exception as e:
+        log_function(f"Error in complete check: {e}")
+        return False
+
+def main():
+    """Main function to run the GUI application or handle command-line automation"""
+    parser = argparse.ArgumentParser(description="Media Manager GUI", add_help=False)
+    parser.add_argument('--automated-generate-media-list', action='store_true',
+                       help='Run generate media list automation (headless)')
+    parser.add_argument('--automated-check-missing-media', action='store_true',
+                       help='Run check missing media automation (headless)')
+    parser.add_argument('--automated-manage-file-retention', action='store_true',
+                       help='Run manage file retention automation (headless)')
+    parser.add_argument('--automated-check-windows-filenames', action='store_true',
+                       help='Run check Windows filenames automation (headless)')
+    parser.add_argument('--automated-complete-check', action='store_true',
+                       help='Run complete check automation (headless)')
+    parser.add_argument('--automated-test', action='store_true',
+                       help='Test automation (does nothing)')
     
-    root.mainloop()
+    args, unknown = parser.parse_known_args()
+    
+    # Check if any automation flags are set
+    automation_flags = [
+        args.automated_generate_media_list,
+        args.automated_check_missing_media,
+        args.automated_manage_file_retention,
+        args.automated_check_windows_filenames,
+        args.automated_complete_check,
+        args.automated_test
+    ]
+    
+    if any(automation_flags):
+        # Running in automation mode (headless)
+        if args.automated_test:
+            print("Automation test - script is working correctly")
+            return 0
+        
+        operation = None
+        if args.automated_generate_media_list:
+            operation = "generate-media-list"
+        elif args.automated_check_missing_media:
+            operation = "check-missing-media"
+        elif args.automated_manage_file_retention:
+            operation = "manage-file-retention"
+        elif args.automated_check_windows_filenames:
+            operation = "check-windows-filenames"
+        elif args.automated_complete_check:
+            operation = "complete-check"
+        
+        if operation:
+            success = run_headless_operation(operation)
+            return 0 if success else 1
+        else:
+            print("Error: Unknown automation operation")
+            return 1
+    else:
+        # Running in GUI mode
+        root = tk.Tk()
+        app = MediaManagerGUI(root)
+        
+        # Set window icon if available
+        try:
+            root.iconbitmap('icon.ico')
+        except:
+            pass  # Icon file not found, continue without it
+        
+        root.mainloop()
+        return 0
 
 if __name__ == "__main__":
-    main()
+    exit(main())
