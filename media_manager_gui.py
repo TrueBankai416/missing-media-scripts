@@ -282,7 +282,22 @@ class MediaManagerGUI:
             return
         
         self.save_config()
-        messagebox.showinfo("Success", "Configuration saved successfully!")
+        
+        # Validate email configuration and provide feedback
+        email_config = load_email_config_from_file(self.config_file)
+        if email_config and email_config.is_valid():
+            messagebox.showinfo("Success", "Configuration saved successfully!\n\nEmail configuration is valid and ready to use.")
+        elif any(self.config["email"].get(field) for field in ["sender_email", "receiver_email", "password", "smtp_server"]):
+            # Some email fields are filled but configuration is invalid
+            messagebox.showwarning("Configuration Saved", 
+                "Configuration saved, but email setup has issues:\n\n" +
+                "• Check email address formats (must be valid email addresses)\n" +
+                "• Verify SMTP port is a number between 1-65535\n" +
+                "• Ensure all required fields are filled\n" +
+                "• For Gmail: use app passwords, not regular passwords\n\n" +
+                "Email notifications will not work until these are fixed.")
+        else:
+            messagebox.showinfo("Success", "Configuration saved successfully!")
     
     def add_directory(self):
         """Add a directory to scan"""
@@ -399,6 +414,7 @@ class MediaManagerGUI:
                 
                 # Send email if configured
                 if self.is_email_configured():
+                    self.log_message("Attempting to send email notification...")
                     success = send_missing_media_email(
                         missing_titles, 
                         config_file="media_manager_config.json",
@@ -470,9 +486,9 @@ class MediaManagerGUI:
     
     def is_email_configured(self):
         """Check if email is properly configured"""
-        email_config = self.config["email"]
-        required_fields = ["sender_email", "receiver_email", "password", "smtp_server"]
-        return all(email_config.get(field) for field in required_fields)
+        # Use the shared module's validation logic for consistency
+        email_config = load_email_config_from_file(self.config_file)
+        return email_config is not None and email_config.is_valid()
     
     
     def refresh_file_list(self):

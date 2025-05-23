@@ -43,25 +43,51 @@ def generate_missing_media_list(media_list_dir, output_file):
     """
     most_recent_file, second_most_recent_file = find_two_most_recent_media_lists(media_list_dir, 'media_list_*.txt')
 
+    # Check if we have enough files to compare
+    if not most_recent_file or not second_most_recent_file:
+        error_msg = f"Error: Need at least 2 media list files in {media_list_dir} to compare"
+        print(error_msg)
+        print("Please run generate_media_list.py at least twice to create comparison files")
+        return False
+
     # Load titles from both files
     def load_titles_from_file(file_path):
-        with open(file_path, 'r') as f:
-            return set(f.read().splitlines())
+        try:
+            with open(file_path, 'r') as f:
+                return set(f.read().splitlines())
+        except Exception as e:
+            print(f"Error reading {file_path}: {e}")
+            return set()
 
     most_recent_titles = load_titles_from_file(most_recent_file)
     second_most_recent_titles = load_titles_from_file(second_most_recent_file)
+
+    if not most_recent_titles and not second_most_recent_titles:
+        print("Error: Could not load any media lists")
+        return False
 
     # Find missing titles
     missing_titles = second_most_recent_titles - most_recent_titles
 
     if missing_titles:
-        with open(output_file, 'w') as f:
-            for title in sorted(missing_titles):
-                f.write(f"{title}\n")
-        send_missing_media_email(missing_titles)
-        print(f"Missing titles written to {output_file}")
+        try:
+            with open(output_file, 'w') as f:
+                for title in sorted(missing_titles):
+                    f.write(f"{title}\n")
+            print(f"Missing titles written to {output_file}")
+            
+            # Attempt to send email notification
+            print("Attempting to send email notification...")
+            email_sent = send_missing_media_email(missing_titles)
+            if not email_sent:
+                print("Note: Email notification failed. Check your email configuration in email_utils.py")
+        except Exception as e:
+            print(f"Error writing output file {output_file}: {e}")
+            return False
     else:
         print("No titles are missing.")
+    
+    return True
 
 def main():
     parser = argparse.ArgumentParser(description="Generate a list of missing media titles.")
