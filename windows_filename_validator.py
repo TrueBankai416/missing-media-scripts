@@ -53,7 +53,8 @@ class WindowsFilenameValidator:
             issues.append(f"Contains control characters (ASCII 0-31)")
         
         # Check for names ending with period or space
-        if filename.endswith('.') or filename.endswith(' '):
+        name_without_ext = os.path.splitext(filename)[0]
+        if filename.endswith('.') or filename.endswith(' ') or name_without_ext.endswith(' ') or name_without_ext.endswith('.'):
             issues.append("Filename ends with period or space")
         
         # Check for reserved names
@@ -76,6 +77,56 @@ class WindowsFilenameValidator:
                 issues.append(f"Path component has leading/trailing spaces: '{part}'")
         
         return issues
+    
+    def suggest_filename_fix(self, filepath):
+        """
+        Suggest a fixed filename for a problematic file
+        
+        Args:
+            filepath (str): Full path to the file
+            
+        Returns:
+            str or None: Suggested new filename, or None if no fix needed
+        """
+        filename = os.path.basename(filepath)
+        original_filename = filename
+        
+        # Replace invalid characters with underscores
+        for char in self.INVALID_CHARS:
+            if char in filename:
+                filename = filename.replace(char, '_')
+        
+        # Remove control characters
+        filename = ''.join(char for char in filename if ord(char) >= 32)
+        
+        # Remove trailing periods and spaces from name part (before extension)
+        name_part, ext_part = os.path.splitext(filename)
+        name_part = name_part.rstrip('. ')
+        filename = name_part + ext_part
+        
+        # Handle reserved names by adding suffix
+        name_without_ext = os.path.splitext(filename)[0].upper()
+        if name_without_ext in self.RESERVED_NAMES:
+            name_part, ext_part = os.path.splitext(filename)
+            filename = f"{name_part}_file{ext_part}"
+        
+        # Truncate if too long
+        if len(filename) > self.MAX_FILENAME_LENGTH:
+            name_part, ext_part = os.path.splitext(filename)
+            max_name_length = self.MAX_FILENAME_LENGTH - len(ext_part)
+            filename = name_part[:max_name_length] + ext_part
+        
+        # Clean up multiple underscores
+        while '__' in filename:
+            filename = filename.replace('__', '_')
+        
+        # Remove leading/trailing underscores
+        name_part, ext_part = os.path.splitext(filename)
+        name_part = name_part.strip('_')
+        filename = name_part + ext_part
+        
+        # Return None if no changes were made
+        return filename if filename != original_filename else None
     
     def validate_file_list(self, file_list):
         """

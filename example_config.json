@@ -5,7 +5,12 @@
         "D:\\Media\\Movies"
     ],
     "output_directory": "C:\\Users\\YourName\\Documents\\MediaLists",
+    "file_extensions": {
+        "media": [".mp4", ".mkv", ".avi"],
+        "additional": [".mov", ".wmv", ".flv", ".webm"]
+    },
     "email": {
+        "enabled": true,
         "sender_name": "Media Manager",
         "sender_email": "your-email@gmail.com",
         "receiver_email": "alerts@example.com",
