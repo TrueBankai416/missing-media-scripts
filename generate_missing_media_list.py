@@ -77,6 +77,7 @@ def generate_missing_media_list(media_list_dir, output_file):
             print(f"Missing titles written to {output_file}")
             
             # Attempt to send email notification
+            print("Attempting to send email notification...")
             email_sent = send_missing_media_email(missing_titles)
             if not email_sent:
                 print("Note: Email notification failed. Check your email configuration in email_utils.py")
