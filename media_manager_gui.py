@@ -11,12 +11,14 @@ import json
 import threading
 import datetime
 import glob
+import re
 from email_utils import send_missing_media_email, load_email_config_from_file
 from pathlib import Path
 
 # Import functions from existing scripts
 from generate_media_list import generate_media_list
 from generate_missing_media_list import find_two_most_recent_media_lists
+from windows_filename_validator import WindowsFilenameValidator
 
 class MediaManagerGUI:
     def __init__(self, root):
@@ -116,6 +118,11 @@ class MediaManagerGUI:
         ttk.Button(ops_frame, text="Manage File Retention", 
                   command=self.manage_files_threaded,
                   width=25).pack(pady=5)
+        
+        # Windows filename validation button
+        ttk.Button(ops_frame, text="Check Windows Filename Compatibility", 
+                  command=self.check_windows_filenames_threaded,
+                  width=35).pack(pady=5)
         
         # Run all button
         ttk.Button(ops_frame, text="Run Complete Check", 
@@ -483,6 +490,64 @@ class MediaManagerGUI:
         self.check_missing_media()
         self.manage_files()
         self.log_message("Complete check finished")
+    
+    def check_windows_filenames_threaded(self):
+        """Check Windows filename compatibility in a separate thread"""
+        thread = threading.Thread(target=self.check_windows_filenames)
+        thread.start()
+    
+    def check_windows_filenames(self):
+        """Check the most recent media list for Windows filename compatibility issues"""
+        try:
+            self.start_operation()
+            self.log_message("Checking Windows filename compatibility...")
+            
+            output_dir = self.output_var.get()
+            
+            # Find the most recent media list
+            pattern = os.path.join(output_dir, 'media_list_*.txt')
+            files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+            
+            if not files:
+                self.log_message("Error: No media list files found. Please generate a media list first.")
+                return
+            
+            most_recent_file = files[0]
+            self.log_message(f"Analyzing: {os.path.basename(most_recent_file)}")
+            
+            # Validate filenames
+            validator = WindowsFilenameValidator()
+            validation_results = validator.validate_from_file(most_recent_file)
+            
+            if validation_results:
+                # Save the report
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                report_file = os.path.join(output_dir, f"windows_filename_issues_{timestamp}.txt")
+                
+                report = validator.generate_report(validation_results, report_file)
+                
+                self.log_message(f"Found {len(validation_results)} files with Windows naming issues")
+                self.log_message(f"Report saved: {report_file}")
+                
+                # Show a summary in the log
+                self.log_message("\nSample issues found:")
+                count = 0
+                for filepath, issues in validation_results.items():
+                    if count >= 5:  # Show only first 5 for brevity
+                        self.log_message(f"... and {len(validation_results) - 5} more (see report file)")
+                        break
+                    self.log_message(f"  • {os.path.basename(filepath)}: {issues[0]}")
+                    count += 1
+                
+            else:
+                self.log_message("✅ All filenames are Windows compatible!")
+            
+            self.refresh_file_list()
+            
+        except Exception as e:
+            self.log_message(f"Error checking Windows filenames: {e}")
+        finally:
+            self.stop_operation()
     
     def is_email_configured(self):
         """Check if email is properly configured"""
