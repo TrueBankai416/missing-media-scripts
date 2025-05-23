@@ -18,8 +18,9 @@ A comprehensive media file monitoring system that tracks your media collection, 
 ### Windows Users (Recommended)
 
 **Option 1: Standalone Executable** (See `BUILD_EXECUTABLE.md`)
-1. Build or download the `.exe` file
-2. Run `MediaManager.exe` directly (no Python installation required)
+1. Download or clone this repository
+2. Build or download the `.exe` file
+3. Run `MediaManager.exe` directly (no Python installation required)
 
 
 **Option 2: GUI Application**
