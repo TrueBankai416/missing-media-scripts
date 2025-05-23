@@ -5,6 +5,7 @@ import glob
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.utils import formataddr
 
 def load_expected_titles(expected_titles_file):
     """
