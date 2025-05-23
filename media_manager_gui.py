@@ -11,12 +11,14 @@ import json
 import threading
 import datetime
 import glob
+import re
 from email_utils import send_missing_media_email, load_email_config_from_file
 from pathlib import Path
 
 # Import functions from existing scripts
 from generate_media_list import generate_media_list
 from generate_missing_media_list import find_two_most_recent_media_lists
+from windows_filename_validator import WindowsFilenameValidator
 
 class MediaManagerGUI:
     def __init__(self, root):
@@ -50,7 +52,7 @@ class MediaManagerGUI:
         
         try:
             if os.path.exists(self.config_file):
-                with open(self.config_file, 'r') as f:
+                with open(self.config_file, 'r', encoding='utf-8') as f:
                     config = json.load(f)
                     # Merge with defaults to ensure all keys exist
                     for key in default_config:
@@ -65,7 +67,7 @@ class MediaManagerGUI:
     def save_config(self):
         """Save configuration to JSON file"""
         try:
-            with open(self.config_file, 'w') as f:
+            with open(self.config_file, 'w', encoding='utf-8') as f:
                 json.dump(self.config, f, indent=4)
         except Exception as e:
             messagebox.showerror("Config Error", f"Error saving config: {e}")
@@ -116,6 +118,11 @@ class MediaManagerGUI:
         ttk.Button(ops_frame, text="Manage File Retention", 
                   command=self.manage_files_threaded,
                   width=25).pack(pady=5)
+        
+        # Windows filename validation button
+        ttk.Button(ops_frame, text="Check Windows Filename Compatibility", 
+                  command=self.check_windows_filenames_threaded,
+                  width=35).pack(pady=5)
         
         # Run all button
         ttk.Button(ops_frame, text="Run Complete Check", 
@@ -212,12 +219,33 @@ class MediaManagerGUI:
     
     def create_logs_tab(self):
         """Create the logs and results tab"""
-        # Recent files frame
-        files_frame = ttk.LabelFrame(self.logs_frame, text="Recent Media Lists", padding="10")
-        files_frame.pack(fill='x', padx=10, pady=5)
+        # Filter frame
+        filter_frame = ttk.LabelFrame(self.logs_frame, text="File Type Filter", padding="10")
+        filter_frame.pack(fill='x', padx=10, pady=5)
         
-        self.files_listbox = tk.Listbox(files_frame, height=8)
-        files_scrollbar = ttk.Scrollbar(files_frame, orient='vertical')
+        # Filter radio buttons
+        self.file_filter = tk.StringVar(value="all")
+        filter_options = [
+            ("All Files", "all"),
+            ("Media Lists", "media_lists"),
+            ("Missing Media", "missing_media"), 
+            ("Filename Issues", "filename_issues"),
+            ("Legacy Files", "root")
+        ]
+        
+        filter_btn_frame = ttk.Frame(filter_frame)
+        filter_btn_frame.pack(fill='x')
+        
+        for text, value in filter_options:
+            ttk.Radiobutton(filter_btn_frame, text=text, variable=self.file_filter, 
+                           value=value, command=self.refresh_file_list).pack(side='left', padx=10)
+        
+        # Recent files frame
+        self.files_frame = ttk.LabelFrame(self.logs_frame, text="Recent Files", padding="10")
+        self.files_frame.pack(fill='x', padx=10, pady=5)
+        
+        self.files_listbox = tk.Listbox(self.files_frame, height=8)
+        files_scrollbar = ttk.Scrollbar(self.files_frame, orient='vertical')
         self.files_listbox.config(yscrollcommand=files_scrollbar.set)
         files_scrollbar.config(command=self.files_listbox.yview)
         
@@ -225,7 +253,7 @@ class MediaManagerGUI:
         files_scrollbar.pack(side='right', fill='y')
         
         # File buttons
-        file_btn_frame = ttk.Frame(files_frame)
+        file_btn_frame = ttk.Frame(self.files_frame)
         file_btn_frame.pack(fill='x', pady=5)
         
         ttk.Button(file_btn_frame, text="View Selected", 
@@ -282,7 +310,22 @@ class MediaManagerGUI:
             return
         
         self.save_config()
-        messagebox.showinfo("Success", "Configuration saved successfully!")
+        
+        # Validate email configuration and provide feedback
+        email_config = load_email_config_from_file(self.config_file)
+        if email_config and email_config.is_valid():
+            messagebox.showinfo("Success", "Configuration saved successfully!\n\nEmail configuration is valid and ready to use.")
+        elif any(self.config["email"].get(field) for field in ["sender_email", "receiver_email", "password", "smtp_server"]):
+            # Some email fields are filled but configuration is invalid
+            messagebox.showwarning("Configuration Saved", 
+                "Configuration saved, but email setup has issues:\n\n" +
+                "• Check email address formats (must be valid email addresses)\n" +
+                "• Verify SMTP port is a number between 1-65535\n" +
+                "• Ensure all required fields are filled\n" +
+                "• For Gmail: use app passwords, not regular passwords\n\n" +
+                "Email notifications will not work until these are fixed.")
+        else:
+            messagebox.showinfo("Success", "Configuration saved successfully!")
     
     def add_directory(self):
         """Add a directory to scan"""
@@ -335,13 +378,14 @@ class MediaManagerGUI:
                 self.log_message("Error: No directories configured for scanning")
                 return
             
-            # Ensure output directory exists
+            # Ensure output directories exist
             output_dir = self.output_var.get()
-            os.makedirs(output_dir, exist_ok=True)
+            media_lists_dir = os.path.join(output_dir, "media_lists")
+            os.makedirs(media_lists_dir, exist_ok=True)
             
             # Generate filename with timestamp
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_file = os.path.join(output_dir, f"media_list_{timestamp}.txt")
+            output_file = os.path.join(media_lists_dir, f"media_list_{timestamp}.txt")
             
             # Generate the list
             generate_media_list(directories, output_file)
@@ -366,9 +410,10 @@ class MediaManagerGUI:
             self.log_message("Checking for missing media...")
             
             output_dir = self.output_var.get()
+            media_lists_dir = os.path.join(output_dir, "media_lists")
             
             # Find the two most recent media lists
-            most_recent, second_recent = find_two_most_recent_media_lists(output_dir, 'media_list_*.txt')
+            most_recent, second_recent = find_two_most_recent_media_lists(media_lists_dir, 'media_list_*.txt')
             
             if not most_recent or not second_recent:
                 self.log_message("Error: Need at least 2 media lists to compare")
@@ -376,7 +421,7 @@ class MediaManagerGUI:
             
             # Load titles from both files
             def load_titles_from_file(file_path):
-                with open(file_path, 'r') as f:
+                with open(file_path, 'r', encoding='utf-8') as f:
                     return set(f.read().splitlines())
             
             most_recent_titles = load_titles_from_file(most_recent)
@@ -387,10 +432,13 @@ class MediaManagerGUI:
             
             if missing_titles:
                 # Save missing titles
-                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                missing_file = os.path.join(output_dir, f"missing_media_{timestamp}.txt")
+                missing_media_dir = os.path.join(output_dir, "missing_media")
+                os.makedirs(missing_media_dir, exist_ok=True)
                 
-                with open(missing_file, 'w') as f:
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                missing_file = os.path.join(missing_media_dir, f"missing_media_{timestamp}.txt")
+                
+                with open(missing_file, 'w', encoding='utf-8') as f:
                     for title in sorted(missing_titles):
                         f.write(f"{title}\n")
                 
@@ -399,6 +447,7 @@ class MediaManagerGUI:
                 
                 # Send email if configured
                 if self.is_email_configured():
+                    self.log_message("Attempting to send email notification...")
                     success = send_missing_media_email(
                         missing_titles, 
                         config_file="media_manager_config.json",
@@ -431,22 +480,35 @@ class MediaManagerGUI:
             output_dir = self.output_var.get()
             retention_count = self.config["file_retention_count"]
             
-            # Get all text files sorted by modification time
-            pattern = os.path.join(output_dir, "*.txt")
-            files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+            # Subdirectories to manage
+            subdirs = ["media_lists", "missing_media", "filename_issues"]
+            total_deleted = 0
             
-            if len(files) > retention_count:
-                files_to_delete = files[retention_count:]
-                for file_path in files_to_delete:
-                    try:
-                        os.remove(file_path)
-                        self.log_message(f"Deleted old file: {os.path.basename(file_path)}")
-                    except Exception as e:
-                        self.log_message(f"Error deleting {file_path}: {e}")
-                
-                self.log_message(f"Kept {retention_count} most recent files, deleted {len(files_to_delete)} old files")
+            for subdir in subdirs:
+                subdir_path = os.path.join(output_dir, subdir)
+                if os.path.exists(subdir_path):
+                    # Get all text files in this subdirectory sorted by modification time
+                    pattern = os.path.join(subdir_path, "*.txt")
+                    files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+                    
+                    if len(files) > retention_count:
+                        files_to_delete = files[retention_count:]
+                        for file_path in files_to_delete:
+                            try:
+                                os.remove(file_path)
+                                self.log_message(f"Deleted old file from {subdir}: {os.path.basename(file_path)}")
+                                total_deleted += 1
+                            except Exception as e:
+                                self.log_message(f"Error deleting {file_path}: {e}")
+                        
+                        self.log_message(f"{subdir}: Kept {retention_count} most recent files, deleted {len(files_to_delete)} old files")
+                    else:
+                        self.log_message(f"{subdir}: Only {len(files)} files found, no cleanup needed")
+            
+            if total_deleted == 0:
+                self.log_message("No files needed cleanup")
             else:
-                self.log_message(f"Only {len(files)} files found, no cleanup needed")
+                self.log_message(f"Total files deleted: {total_deleted}")
             
             self.refresh_file_list()
             
@@ -461,35 +523,149 @@ class MediaManagerGUI:
         thread.start()
     
     def run_complete_check(self):
-        """Run a complete check (generate list, check missing, manage files)"""
+        """Run a complete check (generate list, check missing, manage files, validate Windows filenames)"""
         self.log_message("Starting complete check...")
         self.generate_media_list()
         self.check_missing_media()
         self.manage_files()
+        self.check_windows_filenames()
         self.log_message("Complete check finished")
+    
+    def check_windows_filenames_threaded(self):
+        """Check Windows filename compatibility in a separate thread"""
+        thread = threading.Thread(target=self.check_windows_filenames)
+        thread.start()
+    
+    def check_windows_filenames(self):
+        """Check the most recent media list for Windows filename compatibility issues"""
+        try:
+            self.start_operation()
+            self.log_message("Checking Windows filename compatibility...")
+            
+            output_dir = self.output_var.get()
+            media_lists_dir = os.path.join(output_dir, "media_lists")
+            
+            # Find the most recent media list
+            pattern = os.path.join(media_lists_dir, 'media_list_*.txt')
+            files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+            
+            if not files:
+                self.log_message("Error: No media list files found. Please generate a media list first.")
+                return
+            
+            most_recent_file = files[0]
+            self.log_message(f"Analyzing: {os.path.basename(most_recent_file)}")
+            
+            # Validate filenames
+            validator = WindowsFilenameValidator()
+            validation_results = validator.validate_from_file(most_recent_file)
+            
+            if validation_results:
+                # Save the report
+                filename_issues_dir = os.path.join(output_dir, "filename_issues")
+                os.makedirs(filename_issues_dir, exist_ok=True)
+                
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                report_file = os.path.join(filename_issues_dir, f"windows_filename_issues_{timestamp}.txt")
+                
+                report = validator.generate_report(validation_results, report_file)
+                
+                self.log_message(f"Found {len(validation_results)} files with Windows naming issues")
+                self.log_message(f"Report saved: {report_file}")
+                
+                # Show a summary in the log
+                self.log_message("\nSample issues found:")
+                count = 0
+                for filepath, issues in validation_results.items():
+                    if count >= 5:  # Show only first 5 for brevity
+                        self.log_message(f"... and {len(validation_results) - 5} more (see report file)")
+                        break
+                    self.log_message(f"  • {os.path.basename(filepath)}: {issues[0]}")
+                    count += 1
+                
+            else:
+                self.log_message("✅ All filenames are Windows compatible!")
+            
+            self.refresh_file_list()
+            
+        except Exception as e:
+            self.log_message(f"Error checking Windows filenames: {e}")
+        finally:
+            self.stop_operation()
     
     def is_email_configured(self):
         """Check if email is properly configured"""
-        email_config = self.config["email"]
-        required_fields = ["sender_email", "receiver_email", "password", "smtp_server"]
-        return all(email_config.get(field) for field in required_fields)
+        # Use the shared module's validation logic for consistency
+        email_config = load_email_config_from_file(self.config_file)
+        return email_config is not None and email_config.is_valid()
     
     
     def refresh_file_list(self):
-        """Refresh the list of files in the logs tab"""
+        """Refresh the list of files in the logs tab with filtering"""
         try:
             self.files_listbox.delete(0, tk.END)
             output_dir = self.output_var.get()
             
             if os.path.exists(output_dir):
-                pattern = os.path.join(output_dir, "*.txt")
-                files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+                # Get current filter
+                current_filter = getattr(self, 'file_filter', None)
+                if current_filter is None:
+                    # Initialize filter if not exists (for backward compatibility)
+                    self.file_filter = tk.StringVar(value="all")
+                    current_filter = self.file_filter
                 
-                for file_path in files:
+                filter_value = current_filter.get()
+                
+                # Subdirectories to check
+                subdirs = ["media_lists", "missing_media", "filename_issues"]
+                all_files = []
+                
+                for subdir in subdirs:
+                    # Skip subdirectory if filtering and it doesn't match
+                    if filter_value != "all" and filter_value != subdir:
+                        continue
+                    
+                    subdir_path = os.path.join(output_dir, subdir)
+                    if os.path.exists(subdir_path):
+                        pattern = os.path.join(subdir_path, "*.txt")
+                        files = glob.glob(pattern)
+                        for file_path in files:
+                            all_files.append((file_path, subdir))
+                
+                # Also check root directory for any legacy files
+                if filter_value == "all" or filter_value == "root":
+                    root_pattern = os.path.join(output_dir, "*.txt")
+                    root_files = glob.glob(root_pattern)
+                    for file_path in root_files:
+                        all_files.append((file_path, "root"))
+                
+                # Sort all files by modification time (newest first)
+                all_files.sort(key=lambda x: os.path.getmtime(x[0]), reverse=True)
+                
+                for file_path, subdir in all_files:
                     filename = os.path.basename(file_path)
                     mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-                    display_name = f"{filename} ({mod_time.strftime('%Y-%m-%d %H:%M:%S')})"
+                    if subdir == "root":
+                        display_name = f"{filename} ({mod_time.strftime('%Y-%m-%d %H:%M:%S')})"
+                    else:
+                        display_name = f"[{subdir}] {filename} ({mod_time.strftime('%Y-%m-%d %H:%M:%S')})"
                     self.files_listbox.insert(tk.END, display_name)
+                
+                # Update frame title with file count and filter info
+                file_count = len(all_files)
+                if filter_value == "all":
+                    filter_text = "all files"
+                else:
+                    filter_map = {
+                        "media_lists": "media lists",
+                        "missing_media": "missing media reports", 
+                        "filename_issues": "filename issue reports",
+                        "root": "legacy files"
+                    }
+                    filter_text = filter_map.get(filter_value, filter_value)
+                
+                self.files_frame.config(text=f"Recent Files ({file_count} {filter_text})")
+                        
         except Exception as e:
             self.log_message(f"Error refreshing file list: {e}")
     
@@ -503,11 +679,20 @@ class MediaManagerGUI:
         try:
             # Get the filename from the display name
             display_name = self.files_listbox.get(selected[0])
-            filename = display_name.split(" (")[0]  # Remove timestamp part
             
-            file_path = os.path.join(self.output_var.get(), filename)
+            # Handle both old format and new format with subdirectory
+            if display_name.startswith("["):
+                # New format: [subdir] filename (timestamp)
+                parts = display_name.split("] ", 1)
+                subdir = parts[0][1:]  # Remove the opening bracket
+                filename = parts[1].split(" (")[0]  # Remove timestamp part
+                file_path = os.path.join(self.output_var.get(), subdir, filename)
+            else:
+                # Old format or root: filename (timestamp)
+                filename = display_name.split(" (")[0]  # Remove timestamp part
+                file_path = os.path.join(self.output_var.get(), filename)
             
-            with open(file_path, 'r') as f:
+            with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()
             
             self.log_text.config(state='normal')

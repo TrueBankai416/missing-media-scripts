@@ -18,7 +18,7 @@ def generate_media_list(directories, output_file):
                 if file.endswith(('.mp4', '.mkv', '.avi')):
                     media_files.append(os.path.join(root, file))
     
-    with open(output_file, 'w') as f:
+    with open(output_file, 'w', encoding='utf-8') as f:
         for file in media_files:
             f.write(f"{file}\n")
 

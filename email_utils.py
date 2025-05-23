@@ -10,6 +10,7 @@ from email.mime.multipart import MIMEMultipart
 from email.utils import formataddr
 import json
 import os
+import re
 
 
 class EmailConfig:
@@ -23,11 +24,41 @@ class EmailConfig:
         self.smtp_port = smtp_port
     
     def is_valid(self):
-        """Check if all required email configuration is present"""
+        """Check if all required email configuration is present and valid"""
+        # Check if all required fields are present
         required_fields = [
             self.sender_email, self.receiver_email, self.password, self.smtp_server
         ]
-        return all(field for field in required_fields)
+        if not all(field for field in required_fields):
+            return False
+        
+        # Validate email addresses using basic regex
+        email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+        if not re.match(email_pattern, self.sender_email):
+            return False
+        if not re.match(email_pattern, self.receiver_email):
+            return False
+        
+        # Validate SMTP port
+        try:
+            port = int(self.smtp_port)
+            if not (1 <= port <= 65535):
+                return False
+        except (ValueError, TypeError):
+            return False
+        
+        # Check for placeholder values
+        placeholder_values = [
+            "SENDER_NAME_HERE", "SENDER_EMAIL_HERE", "RECEIVER_EMAIL_HERE", 
+            "PASSWORD_HERE", "smtp.server.com"
+        ]
+        config_values = [
+            self.sender_email, self.receiver_email, self.password, self.smtp_server
+        ]
+        if any(val in placeholder_values for val in config_values):
+            return False
+        
+        return True
 
 
 def load_email_config_from_file(config_file="media_manager_config.json"):
@@ -42,7 +73,7 @@ def load_email_config_from_file(config_file="media_manager_config.json"):
     """
     try:
         if os.path.exists(config_file):
-            with open(config_file, 'r') as f:
+            with open(config_file, 'r', encoding='utf-8') as f:
                 config = json.load(f)
                 email_config = config.get("email", {})
                 
@@ -68,7 +99,13 @@ def create_email_config_hardcoded():
         EmailConfig: Email configuration object with hardcoded values
     
     Note:
-        Users should update these values before using
+        Users MUST update these values before using. The default values are
+        intentionally invalid to prevent accidental usage.
+        
+        To configure:
+        1. Edit this function in email_utils.py
+        2. Replace placeholder values with your actual email settings
+        3. For Gmail: use app passwords, not your regular password
     """
     return EmailConfig(
         sender_name="SENDER_NAME_HERE",
