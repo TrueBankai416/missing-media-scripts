@@ -219,12 +219,33 @@ class MediaManagerGUI:
     
     def create_logs_tab(self):
         """Create the logs and results tab"""
-        # Recent files frame
-        files_frame = ttk.LabelFrame(self.logs_frame, text="Recent Media Lists", padding="10")
-        files_frame.pack(fill='x', padx=10, pady=5)
+        # Filter frame
+        filter_frame = ttk.LabelFrame(self.logs_frame, text="File Type Filter", padding="10")
+        filter_frame.pack(fill='x', padx=10, pady=5)
         
-        self.files_listbox = tk.Listbox(files_frame, height=8)
-        files_scrollbar = ttk.Scrollbar(files_frame, orient='vertical')
+        # Filter radio buttons
+        self.file_filter = tk.StringVar(value="all")
+        filter_options = [
+            ("All Files", "all"),
+            ("Media Lists", "media_lists"),
+            ("Missing Media", "missing_media"), 
+            ("Filename Issues", "filename_issues"),
+            ("Legacy Files", "root")
+        ]
+        
+        filter_btn_frame = ttk.Frame(filter_frame)
+        filter_btn_frame.pack(fill='x')
+        
+        for text, value in filter_options:
+            ttk.Radiobutton(filter_btn_frame, text=text, variable=self.file_filter, 
+                           value=value, command=self.refresh_file_list).pack(side='left', padx=10)
+        
+        # Recent files frame
+        self.files_frame = ttk.LabelFrame(self.logs_frame, text="Recent Files", padding="10")
+        self.files_frame.pack(fill='x', padx=10, pady=5)
+        
+        self.files_listbox = tk.Listbox(self.files_frame, height=8)
+        files_scrollbar = ttk.Scrollbar(self.files_frame, orient='vertical')
         self.files_listbox.config(yscrollcommand=files_scrollbar.set)
         files_scrollbar.config(command=self.files_listbox.yview)
         
@@ -232,7 +253,7 @@ class MediaManagerGUI:
         files_scrollbar.pack(side='right', fill='y')
         
         # File buttons
-        file_btn_frame = ttk.Frame(files_frame)
+        file_btn_frame = ttk.Frame(self.files_frame)
         file_btn_frame.pack(fill='x', pady=5)
         
         ttk.Button(file_btn_frame, text="View Selected", 
@@ -580,17 +601,30 @@ class MediaManagerGUI:
     
     
     def refresh_file_list(self):
-        """Refresh the list of files in the logs tab"""
+        """Refresh the list of files in the logs tab with filtering"""
         try:
             self.files_listbox.delete(0, tk.END)
             output_dir = self.output_var.get()
             
             if os.path.exists(output_dir):
+                # Get current filter
+                current_filter = getattr(self, 'file_filter', None)
+                if current_filter is None:
+                    # Initialize filter if not exists (for backward compatibility)
+                    self.file_filter = tk.StringVar(value="all")
+                    current_filter = self.file_filter
+                
+                filter_value = current_filter.get()
+                
                 # Subdirectories to check
                 subdirs = ["media_lists", "missing_media", "filename_issues"]
                 all_files = []
                 
                 for subdir in subdirs:
+                    # Skip subdirectory if filtering and it doesn't match
+                    if filter_value != "all" and filter_value != subdir:
+                        continue
+                    
                     subdir_path = os.path.join(output_dir, subdir)
                     if os.path.exists(subdir_path):
                         pattern = os.path.join(subdir_path, "*.txt")
@@ -599,10 +633,11 @@ class MediaManagerGUI:
                             all_files.append((file_path, subdir))
                 
                 # Also check root directory for any legacy files
-                root_pattern = os.path.join(output_dir, "*.txt")
-                root_files = glob.glob(root_pattern)
-                for file_path in root_files:
-                    all_files.append((file_path, "root"))
+                if filter_value == "all" or filter_value == "root":
+                    root_pattern = os.path.join(output_dir, "*.txt")
+                    root_files = glob.glob(root_pattern)
+                    for file_path in root_files:
+                        all_files.append((file_path, "root"))
                 
                 # Sort all files by modification time (newest first)
                 all_files.sort(key=lambda x: os.path.getmtime(x[0]), reverse=True)
@@ -615,6 +650,22 @@ class MediaManagerGUI:
                     else:
                         display_name = f"[{subdir}] {filename} ({mod_time.strftime('%Y-%m-%d %H:%M:%S')})"
                     self.files_listbox.insert(tk.END, display_name)
+                
+                # Update frame title with file count and filter info
+                file_count = len(all_files)
+                if filter_value == "all":
+                    filter_text = "all files"
+                else:
+                    filter_map = {
+                        "media_lists": "media lists",
+                        "missing_media": "missing media reports", 
+                        "filename_issues": "filename issue reports",
+                        "root": "legacy files"
+                    }
+                    filter_text = filter_map.get(filter_value, filter_value)
+                
+                self.files_frame.config(text=f"Recent Files ({file_count} {filter_text})")
+                        
         except Exception as e:
             self.log_message(f"Error refreshing file list: {e}")
     
