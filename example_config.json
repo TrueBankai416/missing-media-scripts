@@ -6,6 +6,7 @@
     ],
     "output_directory": "C:\\Users\\YourName\\Documents\\MediaLists",
     "email": {
+        "sender_name": "Media Manager",
         "sender_email": "your-email@gmail.com",
         "receiver_email": "alerts@example.com",
         "password": "your-app-password-here",

@@ -357,13 +357,14 @@ class MediaManagerGUI:
                 self.log_message("Error: No directories configured for scanning")
                 return
             
-            # Ensure output directory exists
+            # Ensure output directories exist
             output_dir = self.output_var.get()
-            os.makedirs(output_dir, exist_ok=True)
+            media_lists_dir = os.path.join(output_dir, "media_lists")
+            os.makedirs(media_lists_dir, exist_ok=True)
             
             # Generate filename with timestamp
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-            output_file = os.path.join(output_dir, f"media_list_{timestamp}.txt")
+            output_file = os.path.join(media_lists_dir, f"media_list_{timestamp}.txt")
             
             # Generate the list
             generate_media_list(directories, output_file)
@@ -388,9 +389,10 @@ class MediaManagerGUI:
             self.log_message("Checking for missing media...")
             
             output_dir = self.output_var.get()
+            media_lists_dir = os.path.join(output_dir, "media_lists")
             
             # Find the two most recent media lists
-            most_recent, second_recent = find_two_most_recent_media_lists(output_dir, 'media_list_*.txt')
+            most_recent, second_recent = find_two_most_recent_media_lists(media_lists_dir, 'media_list_*.txt')
             
             if not most_recent or not second_recent:
                 self.log_message("Error: Need at least 2 media lists to compare")
@@ -409,8 +411,11 @@ class MediaManagerGUI:
             
             if missing_titles:
                 # Save missing titles
+                missing_media_dir = os.path.join(output_dir, "missing_media")
+                os.makedirs(missing_media_dir, exist_ok=True)
+                
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                missing_file = os.path.join(output_dir, f"missing_media_{timestamp}.txt")
+                missing_file = os.path.join(missing_media_dir, f"missing_media_{timestamp}.txt")
                 
                 with open(missing_file, 'w', encoding='utf-8') as f:
                     for title in sorted(missing_titles):
@@ -454,22 +459,35 @@ class MediaManagerGUI:
             output_dir = self.output_var.get()
             retention_count = self.config["file_retention_count"]
             
-            # Get all text files sorted by modification time
-            pattern = os.path.join(output_dir, "*.txt")
-            files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+            # Subdirectories to manage
+            subdirs = ["media_lists", "missing_media", "filename_issues"]
+            total_deleted = 0
             
-            if len(files) > retention_count:
-                files_to_delete = files[retention_count:]
-                for file_path in files_to_delete:
-                    try:
-                        os.remove(file_path)
-                        self.log_message(f"Deleted old file: {os.path.basename(file_path)}")
-                    except Exception as e:
-                        self.log_message(f"Error deleting {file_path}: {e}")
-                
-                self.log_message(f"Kept {retention_count} most recent files, deleted {len(files_to_delete)} old files")
+            for subdir in subdirs:
+                subdir_path = os.path.join(output_dir, subdir)
+                if os.path.exists(subdir_path):
+                    # Get all text files in this subdirectory sorted by modification time
+                    pattern = os.path.join(subdir_path, "*.txt")
+                    files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+                    
+                    if len(files) > retention_count:
+                        files_to_delete = files[retention_count:]
+                        for file_path in files_to_delete:
+                            try:
+                                os.remove(file_path)
+                                self.log_message(f"Deleted old file from {subdir}: {os.path.basename(file_path)}")
+                                total_deleted += 1
+                            except Exception as e:
+                                self.log_message(f"Error deleting {file_path}: {e}")
+                        
+                        self.log_message(f"{subdir}: Kept {retention_count} most recent files, deleted {len(files_to_delete)} old files")
+                    else:
+                        self.log_message(f"{subdir}: Only {len(files)} files found, no cleanup needed")
+            
+            if total_deleted == 0:
+                self.log_message("No files needed cleanup")
             else:
-                self.log_message(f"Only {len(files)} files found, no cleanup needed")
+                self.log_message(f"Total files deleted: {total_deleted}")
             
             self.refresh_file_list()
             
@@ -504,9 +522,10 @@ class MediaManagerGUI:
             self.log_message("Checking Windows filename compatibility...")
             
             output_dir = self.output_var.get()
+            media_lists_dir = os.path.join(output_dir, "media_lists")
             
             # Find the most recent media list
-            pattern = os.path.join(output_dir, 'media_list_*.txt')
+            pattern = os.path.join(media_lists_dir, 'media_list_*.txt')
             files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
             
             if not files:
@@ -522,8 +541,11 @@ class MediaManagerGUI:
             
             if validation_results:
                 # Save the report
+                filename_issues_dir = os.path.join(output_dir, "filename_issues")
+                os.makedirs(filename_issues_dir, exist_ok=True)
+                
                 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                report_file = os.path.join(output_dir, f"windows_filename_issues_{timestamp}.txt")
+                report_file = os.path.join(filename_issues_dir, f"windows_filename_issues_{timestamp}.txt")
                 
                 report = validator.generate_report(validation_results, report_file)
                 
@@ -564,13 +586,34 @@ class MediaManagerGUI:
             output_dir = self.output_var.get()
             
             if os.path.exists(output_dir):
-                pattern = os.path.join(output_dir, "*.txt")
-                files = sorted(glob.glob(pattern), key=os.path.getmtime, reverse=True)
+                # Subdirectories to check
+                subdirs = ["media_lists", "missing_media", "filename_issues"]
+                all_files = []
                 
-                for file_path in files:
+                for subdir in subdirs:
+                    subdir_path = os.path.join(output_dir, subdir)
+                    if os.path.exists(subdir_path):
+                        pattern = os.path.join(subdir_path, "*.txt")
+                        files = glob.glob(pattern)
+                        for file_path in files:
+                            all_files.append((file_path, subdir))
+                
+                # Also check root directory for any legacy files
+                root_pattern = os.path.join(output_dir, "*.txt")
+                root_files = glob.glob(root_pattern)
+                for file_path in root_files:
+                    all_files.append((file_path, "root"))
+                
+                # Sort all files by modification time (newest first)
+                all_files.sort(key=lambda x: os.path.getmtime(x[0]), reverse=True)
+                
+                for file_path, subdir in all_files:
                     filename = os.path.basename(file_path)
                     mod_time = datetime.datetime.fromtimestamp(os.path.getmtime(file_path))
-                    display_name = f"{filename} ({mod_time.strftime('%Y-%m-%d %H:%M:%S')})"
+                    if subdir == "root":
+                        display_name = f"{filename} ({mod_time.strftime('%Y-%m-%d %H:%M:%S')})"
+                    else:
+                        display_name = f"[{subdir}] {filename} ({mod_time.strftime('%Y-%m-%d %H:%M:%S')})"
                     self.files_listbox.insert(tk.END, display_name)
         except Exception as e:
             self.log_message(f"Error refreshing file list: {e}")
@@ -585,9 +628,18 @@ class MediaManagerGUI:
         try:
             # Get the filename from the display name
             display_name = self.files_listbox.get(selected[0])
-            filename = display_name.split(" (")[0]  # Remove timestamp part
             
-            file_path = os.path.join(self.output_var.get(), filename)
+            # Handle both old format and new format with subdirectory
+            if display_name.startswith("["):
+                # New format: [subdir] filename (timestamp)
+                parts = display_name.split("] ", 1)
+                subdir = parts[0][1:]  # Remove the opening bracket
+                filename = parts[1].split(" (")[0]  # Remove timestamp part
+                file_path = os.path.join(self.output_var.get(), subdir, filename)
+            else:
+                # Old format or root: filename (timestamp)
+                filename = display_name.split(" (")[0]  # Remove timestamp part
+                file_path = os.path.join(self.output_var.get(), filename)
             
             with open(file_path, 'r', encoding='utf-8') as f:
                 content = f.read()

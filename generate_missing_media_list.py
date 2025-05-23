@@ -71,6 +71,11 @@ def generate_missing_media_list(media_list_dir, output_file):
 
     if missing_titles:
         try:
+            # Ensure output directory exists
+            output_dir = os.path.dirname(output_file)
+            if output_dir:
+                os.makedirs(output_dir, exist_ok=True)
+            
             with open(output_file, 'w', encoding='utf-8') as f:
                 for title in sorted(missing_titles):
                     f.write(f"{title}\n")
