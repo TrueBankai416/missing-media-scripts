@@ -39,7 +39,12 @@ class MediaManagerGUI:
         default_config = {
             "scan_directories": [],
             "output_directory": os.path.join(os.getcwd(), "lists"),
+            "file_extensions": {
+                "media": [".mp4", ".mkv", ".avi"],
+                "additional": []
+            },
             "email": {
+                "enabled": False,
                 "sender_name": "",
                 "sender_email": "",
                 "receiver_email": "",
@@ -58,6 +63,18 @@ class MediaManagerGUI:
                     for key in default_config:
                         if key not in config:
                             config[key] = default_config[key]
+                    
+                    # Handle nested dictionaries (email, file_extensions)
+                    for nested_key in ["email", "file_extensions"]:
+                        if nested_key in config and isinstance(config[nested_key], dict):
+                            for sub_key in default_config[nested_key]:
+                                if sub_key not in config[nested_key]:
+                                    config[nested_key][sub_key] = default_config[nested_key][sub_key]
+                    
+                    # Backward compatibility: if email.enabled doesn't exist, default to False
+                    if "enabled" not in config.get("email", {}):
+                        config["email"]["enabled"] = False
+                    
                     return config
         except Exception as e:
             messagebox.showerror("Config Error", f"Error loading config: {e}")
@@ -82,9 +99,13 @@ class MediaManagerGUI:
         self.main_frame = ttk.Frame(notebook)
         notebook.add(self.main_frame, text="Main")
         
-        # Configuration tab
+        # Main Configuration tab
         self.config_frame = ttk.Frame(notebook)
-        notebook.add(self.config_frame, text="Configuration")
+        notebook.add(self.config_frame, text="Main Configuration")
+        
+        # Email Configuration tab
+        self.email_frame = ttk.Frame(notebook)
+        notebook.add(self.email_frame, text="Email Configuration")
         
         # Logs tab
         self.logs_frame = ttk.Frame(notebook)
@@ -92,6 +113,7 @@ class MediaManagerGUI:
         
         self.create_main_tab()
         self.create_config_tab()
+        self.create_email_tab()
         self.create_logs_tab()
     
     def create_main_tab(self):
@@ -141,7 +163,7 @@ class MediaManagerGUI:
         self.progress.pack(fill='x', padx=10, pady=5)
     
     def create_config_tab(self):
-        """Create the configuration tab"""
+        """Create the main configuration tab"""
         # Directories section
         dir_frame = ttk.LabelFrame(self.config_frame, text="Scan Directories", padding="10")
         dir_frame.pack(fill='x', padx=10, pady=5)
@@ -176,8 +198,59 @@ class MediaManagerGUI:
         ttk.Button(output_frame, text="Browse", 
                   command=self.browse_output_directory).pack(side='right', padx=5)
         
+        # File Extensions section
+        ext_frame = ttk.LabelFrame(self.config_frame, text="File Extensions", padding="10")
+        ext_frame.pack(fill='x', padx=10, pady=5)
+        
+        # Media Extensions
+        media_frame = ttk.Frame(ext_frame)
+        media_frame.pack(fill='x', pady=5)
+        ttk.Label(media_frame, text="Media Extensions:", width=20).pack(side='left')
+        self.media_ext_var = tk.StringVar()
+        ttk.Entry(media_frame, textvariable=self.media_ext_var, width=60).pack(side='left', fill='x', expand=True, padx=5)
+        
+        # Additional Extensions
+        additional_frame = ttk.Frame(ext_frame)
+        additional_frame.pack(fill='x', pady=5)
+        ttk.Label(additional_frame, text="Additional Extensions:", width=20).pack(side='left')
+        self.additional_ext_var = tk.StringVar()
+        ttk.Entry(additional_frame, textvariable=self.additional_ext_var, width=60).pack(side='left', fill='x', expand=True, padx=5)
+        
+        # Extension help text
+        help_frame = ttk.Frame(ext_frame)
+        help_frame.pack(fill='x', pady=2)
+        help_text = "Enter extensions separated by commas (e.g., .mp4, .mkv, .avi)"
+        ttk.Label(help_frame, text=help_text, font=("Arial", 8), foreground="gray").pack(side='left')
+        
+        # File retention
+        retention_frame = ttk.LabelFrame(self.config_frame, text="File Retention", padding="10")
+        retention_frame.pack(fill='x', padx=10, pady=5)
+        
+        ttk.Label(retention_frame, text="Keep latest files:").pack(side='left')
+        self.retention_var = tk.StringVar()
+        ttk.Entry(retention_frame, textvariable=self.retention_var, width=10).pack(side='left', padx=5)
+        
+        # Save button
+        ttk.Button(self.config_frame, text="Save Main Configuration", 
+                  command=self.save_main_settings).pack(pady=10)
+    
+    def create_email_tab(self):
+        """Create the email configuration tab"""
+        # Email Enable/Disable section
+        enable_frame = ttk.LabelFrame(self.email_frame, text="Email Notifications", padding="10")
+        enable_frame.pack(fill='x', padx=10, pady=5)
+        
+        self.email_enabled_var = tk.BooleanVar()
+        self.email_enabled_checkbox = ttk.Checkbutton(
+            enable_frame, 
+            text="Enable email notifications for missing media", 
+            variable=self.email_enabled_var,
+            command=self.toggle_email_fields
+        )
+        self.email_enabled_checkbox.pack(anchor='w')
+        
         # Email configuration
-        email_frame = ttk.LabelFrame(self.config_frame, text="Email Configuration", padding="10")
+        email_frame = ttk.LabelFrame(self.email_frame, text="Email Settings", padding="10")
         email_frame.pack(fill='x', padx=10, pady=5)
         
         # Email fields
@@ -191,6 +264,7 @@ class MediaManagerGUI:
         ]
         
         self.email_vars = {}
+        self.email_entries = {}
         for i, (label, key) in enumerate(email_fields):
             row_frame = ttk.Frame(email_frame)
             row_frame.pack(fill='x', pady=2)
@@ -204,18 +278,26 @@ class MediaManagerGUI:
                 entry = ttk.Entry(row_frame, textvariable=self.email_vars[key])
             
             entry.pack(side='left', fill='x', expand=True, padx=5)
+            self.email_entries[key] = entry
         
-        # File retention
-        retention_frame = ttk.LabelFrame(self.config_frame, text="File Retention", padding="10")
-        retention_frame.pack(fill='x', padx=10, pady=5)
+        # Email help text
+        email_help_frame = ttk.Frame(self.email_frame)
+        email_help_frame.pack(fill='x', padx=10, pady=5)
         
-        ttk.Label(retention_frame, text="Keep latest files:").pack(side='left')
-        self.retention_var = tk.StringVar()
-        ttk.Entry(retention_frame, textvariable=self.retention_var, width=10).pack(side='left', padx=5)
+        help_text = ("For Gmail: Use app passwords instead of your regular password.\n"
+                    "Go to Google Account Settings → Security → 2-Step Verification → App passwords")
+        ttk.Label(email_help_frame, text=help_text, font=("Arial", 8), 
+                 foreground="gray", wraplength=600, justify='left').pack(anchor='w')
         
         # Save button
-        ttk.Button(self.config_frame, text="Save Configuration", 
-                  command=self.save_settings).pack(pady=10)
+        ttk.Button(self.email_frame, text="Save Email Configuration", 
+                  command=self.save_email_settings).pack(pady=10)
+    
+    def toggle_email_fields(self):
+        """Enable/disable email fields based on checkbox state"""
+        state = 'normal' if self.email_enabled_var.get() else 'disabled'
+        for entry in self.email_entries.values():
+            entry.config(state=state)
     
     def create_logs_tab(self):
         """Create the logs and results tab"""
@@ -280,52 +362,96 @@ class MediaManagerGUI:
         # Load output directory
         self.output_var.set(self.config["output_directory"])
         
+        # Load file extensions
+        media_exts = ", ".join(self.config["file_extensions"]["media"])
+        self.media_ext_var.set(media_exts)
+        
+        additional_exts = ", ".join(self.config["file_extensions"]["additional"])
+        self.additional_ext_var.set(additional_exts)
+        
         # Load email settings
+        self.email_enabled_var.set(self.config["email"].get("enabled", False))
         for key, var in self.email_vars.items():
             var.set(self.config["email"].get(key, ""))
         
         # Load retention setting
         self.retention_var.set(str(self.config["file_retention_count"]))
         
+        # Update email field states based on enabled checkbox
+        self.toggle_email_fields()
+        
         # Refresh file list
         self.refresh_file_list()
     
-    def save_settings(self):
-        """Save settings from GUI controls"""
-        # Save directories
-        self.config["scan_directories"] = list(self.dir_listbox.get(0, tk.END))
-        
-        # Save output directory
-        self.config["output_directory"] = self.output_var.get()
-        
-        # Save email settings
-        for key, var in self.email_vars.items():
-            self.config["email"][key] = var.get()
-        
-        # Save retention setting
+    def save_main_settings(self):
+        """Save main configuration settings"""
         try:
-            self.config["file_retention_count"] = int(self.retention_var.get())
-        except ValueError:
-            messagebox.showerror("Error", "File retention count must be a number")
-            return
-        
-        self.save_config()
-        
-        # Validate email configuration and provide feedback
-        email_config = load_email_config_from_file(self.config_file)
-        if email_config and email_config.is_valid():
-            messagebox.showinfo("Success", "Configuration saved successfully!\n\nEmail configuration is valid and ready to use.")
-        elif any(self.config["email"].get(field) for field in ["sender_email", "receiver_email", "password", "smtp_server"]):
-            # Some email fields are filled but configuration is invalid
-            messagebox.showwarning("Configuration Saved", 
-                "Configuration saved, but email setup has issues:\n\n" +
-                "• Check email address formats (must be valid email addresses)\n" +
-                "• Verify SMTP port is a number between 1-65535\n" +
-                "• Ensure all required fields are filled\n" +
-                "• For Gmail: use app passwords, not regular passwords\n\n" +
-                "Email notifications will not work until these are fixed.")
-        else:
-            messagebox.showinfo("Success", "Configuration saved successfully!")
+            # Save directories
+            self.config["scan_directories"] = list(self.dir_listbox.get(0, tk.END))
+            
+            # Save output directory
+            self.config["output_directory"] = self.output_var.get()
+            
+            # Save file extensions
+            def parse_extensions(ext_string):
+                if not ext_string.strip():
+                    return []
+                extensions = [ext.strip() for ext in ext_string.split(',') if ext.strip()]
+                # Ensure extensions start with dot
+                return [ext if ext.startswith('.') else '.' + ext for ext in extensions]
+            
+            self.config["file_extensions"]["media"] = parse_extensions(self.media_ext_var.get())
+            self.config["file_extensions"]["additional"] = parse_extensions(self.additional_ext_var.get())
+            
+            # Validate that we have at least some file extensions
+            all_extensions = self.config["file_extensions"]["media"] + self.config["file_extensions"]["additional"]
+            if not all_extensions:
+                messagebox.showwarning("Warning", "No file extensions specified. Adding default media extensions.")
+                self.config["file_extensions"]["media"] = [".mp4", ".mkv", ".avi"]
+            
+            # Save retention setting
+            try:
+                self.config["file_retention_count"] = int(self.retention_var.get())
+            except ValueError:
+                messagebox.showerror("Error", "File retention count must be a number")
+                return
+            
+            self.save_config()
+            messagebox.showinfo("Success", "Main configuration saved successfully!")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error saving main configuration: {e}")
+    
+    def save_email_settings(self):
+        """Save email configuration settings"""
+        try:
+            # Save email enabled state
+            self.config["email"]["enabled"] = self.email_enabled_var.get()
+            
+            # Save email settings
+            for key, var in self.email_vars.items():
+                self.config["email"][key] = var.get()
+            
+            self.save_config()
+            
+            # Validate email configuration if enabled
+            if self.email_enabled_var.get():
+                email_config = load_email_config_from_file(self.config_file)
+                if email_config and email_config.is_valid():
+                    messagebox.showinfo("Success", "Email configuration saved successfully!\n\nEmail configuration is valid and ready to use.")
+                else:
+                    messagebox.showwarning("Configuration Saved", 
+                        "Email configuration saved, but has issues:\n\n" +
+                        "• Check email address formats (must be valid email addresses)\n" +
+                        "• Verify SMTP port is a number between 1-65535\n" +
+                        "• Ensure all required fields are filled\n" +
+                        "• For Gmail: use app passwords, not regular passwords\n\n" +
+                        "Email notifications will not work until these are fixed.")
+            else:
+                messagebox.showinfo("Success", "Email configuration saved successfully!\n\nEmail notifications are disabled.")
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Error saving email configuration: {e}")
     
     def add_directory(self):
         """Add a directory to scan"""
@@ -387,8 +513,16 @@ class MediaManagerGUI:
             timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
             output_file = os.path.join(media_lists_dir, f"media_list_{timestamp}.txt")
             
+            # Get configured file extensions
+            all_extensions = (self.config["file_extensions"]["media"] + 
+                            self.config["file_extensions"]["additional"])
+            if not all_extensions:
+                all_extensions = ['.mp4', '.mkv', '.avi']  # Fallback to defaults
+            
+            self.log_message(f"Scanning for extensions: {', '.join(all_extensions)}")
+            
             # Generate the list
-            generate_media_list(directories, output_file)
+            generate_media_list(directories, output_file, all_extensions)
             
             self.log_message(f"Media list generated: {output_file}")
             self.refresh_file_list()
@@ -594,7 +728,11 @@ class MediaManagerGUI:
             self.stop_operation()
     
     def is_email_configured(self):
-        """Check if email is properly configured"""
+        """Check if email is enabled and properly configured"""
+        # First check if email is enabled
+        if not self.config.get("email", {}).get("enabled", False):
+            return False
+        
         # Use the shared module's validation logic for consistency
         email_config = load_email_config_from_file(self.config_file)
         return email_config is not None and email_config.is_valid()

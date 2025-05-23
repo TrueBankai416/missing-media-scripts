@@ -77,6 +77,10 @@ def load_email_config_from_file(config_file="media_manager_config.json"):
                 config = json.load(f)
                 email_config = config.get("email", {})
                 
+                # Check if email is enabled
+                if not email_config.get("enabled", False):
+                    return None
+                
                 return EmailConfig(
                     sender_name=email_config.get("sender_name", ""),
                     sender_email=email_config.get("sender_email", ""),
