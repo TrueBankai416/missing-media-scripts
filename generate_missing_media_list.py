@@ -89,13 +89,12 @@ def main():
     generate_missing_media_list(args.media_list_dir, args.output)
 
 def send_email(subject, body):
-    sender_name = "SENDER_NAME_HERE"
     sender_email = "SENDER_EMAIL_HERE"
     receiver_email = "RECEIVER_EMAIL_HERE"
     password = "PASSWORD_HERE"
 
     message = MIMEMultipart()
-    message["From"] = f"{sender_name} <{sender_email}>"
+    message["From"] = sender_email
     message["To"] = receiver_email
     message["Subject"] = subject
 
