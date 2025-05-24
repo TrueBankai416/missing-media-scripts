@@ -299,6 +299,8 @@ sudo dnf install python3-tkinter
 - **Discord**: Join the community at https://discord.com/channels/1217932881301737523/1217933464955785297
 - **Documentation**: Check `AUTOMATION_README.md` and `GUI_README.md` for detailed guides
 
+<a href="https://www.buymeacoffee.com/BankaiTech"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a beer&emoji=🍺&slug=BankaiTech&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" /></a>
+
 ## License
 
 This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.
@@ -312,5 +314,3 @@ This project is licensed under the GNU General Public License v3.0 - see the LIC
 - Added headless operation modes
 - Improved file retention management
 - Added comprehensive configuration system
-
-<a href="https://www.buymeacoffee.com/BankaiTech"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a beer&emoji=🍺&slug=BankaiTech&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" /></a>
