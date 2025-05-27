@@ -870,13 +870,34 @@ class MediaManagerGUI:
         scrollbar = ttk.Scrollbar(main_container, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
         
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-        
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="n")
+        # Store canvas window id for centering
+        self.help_canvas_window = canvas.create_window((0, 0), window=scrollable_frame, anchor="n")
         canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Configure scrollable frame to update scroll region
+        def on_frame_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+            # Center the content horizontally
+            canvas_width = canvas.winfo_width()
+            frame_width = scrollable_frame.winfo_reqwidth()
+            if canvas_width > frame_width:
+                x_center = (canvas_width - frame_width) // 2
+                canvas.coords(self.help_canvas_window, x_center, 0)
+            else:
+                canvas.coords(self.help_canvas_window, 0, 0)
+        
+        # Configure canvas to center content when resized
+        def on_canvas_configure(event):
+            canvas_width = canvas.winfo_width()
+            frame_width = scrollable_frame.winfo_reqwidth()
+            if canvas_width > frame_width:
+                x_center = (canvas_width - frame_width) // 2
+                canvas.coords(self.help_canvas_window, x_center, 0)
+            else:
+                canvas.coords(self.help_canvas_window, 0, 0)
+        
+        scrollable_frame.bind("<Configure>", on_frame_configure)
+        canvas.bind("<Configure>", on_canvas_configure)
         
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
