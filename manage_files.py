@@ -8,6 +8,26 @@ import os
 import glob
 import argparse
 
+def check_for_updates_if_enabled():
+    """Check for updates in a non-intrusive way"""
+    try:
+        from update_checker import UpdateChecker
+        from version import __version__
+        
+        checker = UpdateChecker()
+        update_info = checker.check_for_updates()
+        
+        if not 'error' in update_info and update_info.get('update_available', False):
+            print(f"📢 Media Manager update available: v{update_info['current_version']} → v{update_info['latest_version']}")
+            print(f"   View release: {update_info['release_url']}")
+            print()
+    except ImportError:
+        # Update checker not available, skip silently
+        pass
+    except Exception:
+        # Any error checking updates should be silent to not interfere with main operation
+        pass
+
 def manage_files(directory, retention_count=100, file_pattern="*.txt"):
     """
     Manages file retention in the specified directory.
@@ -55,8 +75,13 @@ def main():
     parser.add_argument('-d', '--directory', help='Directory containing files to manage.', required=True)
     parser.add_argument('-n', '--count', type=int, default=100, help='Number of recent files to keep (default: 100).')
     parser.add_argument('-p', '--pattern', default='*.txt', help='File pattern to match (default: *.txt).')
+    parser.add_argument('--no-update-check', action='store_true', help='Skip checking for updates')
     
     args = parser.parse_args()
+    
+    # Check for updates unless disabled
+    if not args.no_update_check:
+        check_for_updates_if_enabled()
     
     manage_files(args.directory, args.count, args.pattern)
 

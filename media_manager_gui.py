@@ -16,6 +16,7 @@ import platform
 import subprocess
 import sys
 import argparse
+import webbrowser
 from email_utils import send_missing_media_email, load_email_config_from_file
 from pathlib import Path
 
@@ -23,6 +24,10 @@ from pathlib import Path
 from generate_media_list import generate_media_list
 from generate_missing_media_list import find_two_most_recent_media_lists
 from windows_filename_validator import WindowsFilenameValidator
+
+# Import version and update checking
+from version import __version__, __author__, __description__, __repository__
+from update_checker import UpdateChecker
 
 class FilenameFixDialog:
     def __init__(self, parent, validation_results, validator, log_function):
@@ -343,11 +348,16 @@ class MediaManagerGUI:
         self.logs_frame = ttk.Frame(notebook)
         notebook.add(self.logs_frame, text="Logs & Results")
         
+        # Info tab
+        self.info_frame = ttk.Frame(notebook)
+        notebook.add(self.info_frame, text="Info")
+        
         self.create_main_tab()
         self.create_config_tab()
         self.create_email_tab()
         self.create_automation_tab()
         self.create_logs_tab()
+        self.create_info_tab()
     
     def create_main_tab(self):
         """Create the main operations tab"""
@@ -748,6 +758,174 @@ class MediaManagerGUI:
         
         self.log_text = scrolledtext.ScrolledText(log_frame, state='disabled')
         self.log_text.pack(fill='both', expand=True)
+    
+    def create_info_tab(self):
+        """Create the info tab with version information and update checking"""
+        # Version Information section
+        version_frame = ttk.LabelFrame(self.info_frame, text="Version Information", padding="10")
+        version_frame.pack(fill='x', padx=10, pady=5)
+        
+        # Current version info
+        current_frame = ttk.Frame(version_frame)
+        current_frame.pack(fill='x', pady=5)
+        
+        ttk.Label(current_frame, text="Application:", font=("Arial", 10, "bold")).pack(anchor='w')
+        ttk.Label(current_frame, text=__description__, font=("Arial", 9)).pack(anchor='w', padx=20)
+        
+        ttk.Label(current_frame, text="Current Version:", font=("Arial", 10, "bold")).pack(anchor='w', pady=(10,0))
+        ttk.Label(current_frame, text=__version__, font=("Arial", 9)).pack(anchor='w', padx=20)
+        
+        ttk.Label(current_frame, text="Author:", font=("Arial", 10, "bold")).pack(anchor='w', pady=(10,0))
+        ttk.Label(current_frame, text=__author__, font=("Arial", 9)).pack(anchor='w', padx=20)
+        
+        ttk.Label(current_frame, text="Repository:", font=("Arial", 10, "bold")).pack(anchor='w', pady=(10,0))
+        ttk.Label(current_frame, text=f"github.com/{__repository__}", font=("Arial", 9)).pack(anchor='w', padx=20)
+        
+        # Update Information section
+        update_frame = ttk.LabelFrame(self.info_frame, text="Update Information", padding="10")
+        update_frame.pack(fill='x', padx=10, pady=5)
+        
+        # Latest version display
+        latest_frame = ttk.Frame(update_frame)
+        latest_frame.pack(fill='x', pady=5)
+        
+        ttk.Label(latest_frame, text="Latest Version:", font=("Arial", 10, "bold")).pack(anchor='w')
+        self.latest_version_label = ttk.Label(latest_frame, text="Checking...", font=("Arial", 9))
+        self.latest_version_label.pack(anchor='w', padx=20)
+        
+        # Update status
+        self.update_status_label = ttk.Label(latest_frame, text="", font=("Arial", 9))
+        self.update_status_label.pack(anchor='w', padx=20, pady=(5,0))
+        
+        # Update buttons
+        button_frame = ttk.Frame(update_frame)
+        button_frame.pack(fill='x', pady=10)
+        
+        ttk.Button(button_frame, text="Check for Updates", 
+                  command=self.check_for_updates_threaded).pack(side='left', padx=5)
+        
+        self.view_release_button = ttk.Button(button_frame, text="View Latest Release", 
+                                             command=self.view_latest_release, state='disabled')
+        self.view_release_button.pack(side='left', padx=5)
+        
+        self.download_button = ttk.Button(button_frame, text="Download Update", 
+                                         command=self.download_update, state='disabled')
+        self.download_button.pack(side='left', padx=5)
+        
+        # Release Notes section
+        notes_frame = ttk.LabelFrame(self.info_frame, text="Latest Release Notes", padding="10")
+        notes_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        
+        self.release_notes_text = scrolledtext.ScrolledText(notes_frame, height=10, state='disabled')
+        self.release_notes_text.pack(fill='both', expand=True)
+        
+        # Initialize update checker
+        self.update_checker = UpdateChecker()
+        self.update_info = None
+        
+        # Start initial update check
+        self.check_for_updates_threaded()
+    
+    def check_for_updates_threaded(self):
+        """Check for updates in a separate thread"""
+        thread = threading.Thread(target=self.check_for_updates)
+        thread.start()
+    
+    def check_for_updates(self):
+        """Check for updates and update the GUI"""
+        try:
+            self.latest_version_label.config(text="Checking...")
+            self.update_status_label.config(text="", foreground="black")
+            self.view_release_button.config(state='disabled')
+            self.download_button.config(state='disabled')
+            
+            # Clear release notes
+            self.release_notes_text.config(state='normal')
+            self.release_notes_text.delete(1.0, tk.END)
+            self.release_notes_text.config(state='disabled')
+            
+            # Check for updates
+            self.update_info = self.update_checker.check_for_updates()
+            
+            # Update GUI with results
+            if 'error' in self.update_info:
+                self.latest_version_label.config(text="Error checking for updates")
+                self.update_status_label.config(text=self.update_info['error'], foreground="red")
+            else:
+                latest_version = self.update_info['latest_version']
+                self.latest_version_label.config(text=latest_version)
+                
+                if self.update_info['update_available']:
+                    self.update_status_label.config(text="🎉 Update available!", foreground="green")
+                    self.view_release_button.config(state='normal')
+                    self.download_button.config(state='normal')
+                    
+                    # Show release notes if available
+                    if self.update_info.get('release_notes'):
+                        self.release_notes_text.config(state='normal')
+                        self.release_notes_text.insert(1.0, self.update_info['release_notes'])
+                        self.release_notes_text.config(state='disabled')
+                    
+                    # Show update popup
+                    self.show_update_popup()
+                else:
+                    self.update_status_label.config(text="✅ You're up to date!", foreground="blue")
+                    
+                # Enable view release button even if no update (to see latest release)
+                self.view_release_button.config(state='normal')
+                
+        except Exception as e:
+            self.latest_version_label.config(text="Error")
+            self.update_status_label.config(text=f"Error checking for updates: {e}", foreground="red")
+    
+    def show_update_popup(self):
+        """Show update available popup"""
+        if not self.update_info or not self.update_info.get('update_available'):
+            return
+        
+        latest_version = self.update_info['latest_version']
+        current_version = self.update_info['current_version']
+        
+        result = messagebox.askyesno(
+            "Update Available",
+            f"A new version of Media Manager is available!\n\n"
+            f"Current Version: {current_version}\n"
+            f"Latest Version: {latest_version}\n\n"
+            f"Would you like to view the release page?",
+            icon='info'
+        )
+        
+        if result:
+            self.view_latest_release()
+    
+    def view_latest_release(self):
+        """Open the latest release page in browser"""
+        if self.update_info and self.update_info.get('release_url'):
+            try:
+                webbrowser.open(self.update_info['release_url'])
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not open browser: {e}")
+        else:
+            # Fallback to releases page
+            try:
+                webbrowser.open(f"https://github.com/{__repository__}/releases")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not open browser: {e}")
+    
+    def download_update(self):
+        """Direct user to download the update"""
+        if self.update_info and self.update_info.get('release_url'):
+            try:
+                webbrowser.open(self.update_info['release_url'])
+                messagebox.showinfo("Download Update", 
+                    "The release page has been opened in your browser.\n\n"
+                    "Look for download links or assets on the release page.")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not open browser: {e}")
+        else:
+            messagebox.showinfo("Download Update", 
+                "Please visit the GitHub repository releases page to download the latest version:\n\n"
+                f"https://github.com/{__repository__}/releases")
     
     def load_settings(self):
         """Load settings into GUI controls"""
