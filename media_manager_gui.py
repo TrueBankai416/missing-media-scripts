@@ -328,6 +328,10 @@ class MediaManagerGUI:
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill='both', expand=True, padx=10, pady=10)
         
+        # Help tab (first tab as requested)
+        self.help_frame = ttk.Frame(notebook)
+        notebook.add(self.help_frame, text="Help")
+        
         # Main tab
         self.main_frame = ttk.Frame(notebook)
         notebook.add(self.main_frame, text="Main")
@@ -352,12 +356,23 @@ class MediaManagerGUI:
         self.info_frame = ttk.Frame(notebook)
         notebook.add(self.info_frame, text="Info")
         
+        # Support tab
+        self.support_frame = ttk.Frame(notebook)
+        notebook.add(self.support_frame, text="Support")
+        
+        # Issues tab
+        self.issues_frame = ttk.Frame(notebook)
+        notebook.add(self.issues_frame, text="Issues")
+        
+        self.create_help_tab()
         self.create_main_tab()
         self.create_config_tab()
         self.create_email_tab()
         self.create_automation_tab()
         self.create_logs_tab()
         self.create_info_tab()
+        self.create_support_tab()
+        self.create_issues_tab()
     
     def create_main_tab(self):
         """Create the main operations tab"""
@@ -826,6 +841,88 @@ class MediaManagerGUI:
         # Start initial update check
         self.check_for_updates_threaded()
     
+    def create_help_tab(self):
+        """Create the help tab explaining what each button does"""
+        # Title
+        title_label = ttk.Label(self.help_frame, text="Help & Button Guide", font=("Arial", 16, "bold"))
+        title_label.pack(pady=10)
+        
+        # Main scrollable frame
+        canvas = tk.Canvas(self.help_frame)
+        scrollbar = ttk.Scrollbar(self.help_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        canvas.pack(side="left", fill="both", expand=True, padx=10)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Button explanations
+        button_explanations = [
+            ("Generate Media List", 
+             "Scans your configured directories for media files and creates a timestamped list. "
+             "This is the first step in tracking your media collection. The list includes all "
+             "video files found in your scan directories."),
+            
+            ("Check for Missing Media", 
+             "Compares the two most recent media lists to identify files that have gone missing. "
+             "Creates a report showing which files were present before but are no longer found. "
+             "Useful for detecting deleted, moved, or corrupted media files."),
+            
+            ("Manage File Retention", 
+             "Cleans up old list files to prevent disk space buildup. Keeps only the most recent "
+             "N files (configured in settings). Helps maintain your lists directory by removing "
+             "outdated media lists and reports."),
+            
+            ("Check Windows Filename Compatibility", 
+             "Validates filenames for Windows compatibility issues. Detects problems like invalid "
+             "characters, reserved names, or names that are too long. Creates a detailed report "
+             "of any issues found. Does NOT automatically fix files."),
+            
+            ("View & Fix Filename Issues", 
+             "Opens an interactive dialog to review and selectively fix filename issues found by "
+             "the compatibility check. Allows you to preview suggested fixes and choose which "
+             "ones to apply. Actually renames files when you approve the changes."),
+            
+            ("Run Complete Check", 
+             "Executes all operations in sequence: generates a new media list, checks for missing "
+             "media, manages file retention, and checks filename compatibility. This is the most "
+             "comprehensive option and is recommended for regular monitoring.")
+        ]
+        
+        for button_name, explanation in button_explanations:
+            # Create frame for each button explanation
+            btn_frame = ttk.LabelFrame(scrollable_frame, text=button_name, padding="10")
+            btn_frame.pack(fill='x', padx=10, pady=5)
+            
+            ttk.Label(btn_frame, text=explanation, font=("Arial", 9), 
+                     wraplength=700, justify='left').pack(anchor='w')
+        
+        # Additional help section
+        tips_frame = ttk.LabelFrame(scrollable_frame, text="Tips & Best Practices", padding="10")
+        tips_frame.pack(fill='x', padx=10, pady=10)
+        
+        tips_text = """• Configure your scan directories in 'Main Configuration' before running operations
+• Set up email notifications to get alerts when media goes missing
+• Use automation to schedule regular checks without manual intervention
+• Review the 'Logs & Results' tab to see detailed output from operations
+• The 'Run Complete Check' is perfect for daily automated monitoring
+• Always backup important media files - this tool helps detect issues but doesn't prevent data loss"""
+        
+        ttk.Label(tips_frame, text=tips_text, font=("Arial", 9), 
+                 wraplength=700, justify='left').pack(anchor='w')
+        
+        # Bind mouse wheel to canvas
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    
     def check_for_updates_threaded(self):
         """Check for updates in a separate thread"""
         thread = threading.Thread(target=self.check_for_updates)
@@ -926,6 +1023,190 @@ class MediaManagerGUI:
             messagebox.showinfo("Download Update", 
                 "Please visit the GitHub repository releases page to download the latest version:\n\n"
                 f"https://github.com/{__repository__}/releases")
+    
+    def create_support_tab(self):
+        """Create the support tab with repo and buymeacoffee links"""
+        # Title
+        title_label = ttk.Label(self.support_frame, text="Support & Community", font=("Arial", 16, "bold"))
+        title_label.pack(pady=20)
+        
+        # Repository section
+        repo_frame = ttk.LabelFrame(self.support_frame, text="GitHub Repository", padding="20")
+        repo_frame.pack(fill='x', padx=20, pady=10)
+        
+        ttk.Label(repo_frame, text="Visit our GitHub repository for:", font=("Arial", 10, "bold")).pack(anchor='w')
+        
+        repo_features = """• Latest releases and updates
+• Source code and documentation
+• Bug reports and feature requests
+• Installation instructions
+• Community discussions"""
+        
+        ttk.Label(repo_frame, text=repo_features, font=("Arial", 9), 
+                 justify='left').pack(anchor='w', padx=20, pady=5)
+        
+        ttk.Button(repo_frame, text="Open GitHub Repository", 
+                  command=self.open_github_repo).pack(pady=10)
+        
+        # Discord section
+        discord_frame = ttk.LabelFrame(self.support_frame, text="Community Discord", padding="20")
+        discord_frame.pack(fill='x', padx=20, pady=10)
+        
+        ttk.Label(discord_frame, text="Join our Discord community for:", font=("Arial", 10, "bold")).pack(anchor='w')
+        
+        discord_features = """• Real-time support and help
+• Feature discussions and suggestions
+• Share your setup and tips
+• Connect with other users"""
+        
+        ttk.Label(discord_frame, text=discord_features, font=("Arial", 9), 
+                 justify='left').pack(anchor='w', padx=20, pady=5)
+        
+        ttk.Button(discord_frame, text="Join Discord Server", 
+                  command=self.open_discord).pack(pady=10)
+        
+        # Support development section
+        support_frame = ttk.LabelFrame(self.support_frame, text="Support Development", padding="20")
+        support_frame.pack(fill='x', padx=20, pady=10)
+        
+        ttk.Label(support_frame, text="Enjoying Media Manager? Support continued development:", 
+                 font=("Arial", 10, "bold")).pack(anchor='w')
+        
+        support_text = """This project is developed and maintained in my spare time. 
+Your support helps keep the project active and enables new features!"""
+        
+        ttk.Label(support_frame, text=support_text, font=("Arial", 9), 
+                 wraplength=600, justify='left').pack(anchor='w', pady=5)
+        
+        ttk.Button(support_frame, text="☕ Buy Me a Coffee", 
+                  command=self.open_buymeacoffee).pack(pady=10)
+    
+    def create_issues_tab(self):
+        """Create the issues tab with template examples and GitHub link"""
+        # Title
+        title_label = ttk.Label(self.issues_frame, text="Report Issues & Bugs", font=("Arial", 16, "bold"))
+        title_label.pack(pady=20)
+        
+        # Introduction
+        intro_frame = ttk.Frame(self.issues_frame)
+        intro_frame.pack(fill='x', padx=20, pady=10)
+        
+        intro_text = """Found a bug or have a feature request? We'd love to hear from you! 
+Use the templates below to help us understand and resolve issues quickly."""
+        
+        ttk.Label(intro_frame, text=intro_text, font=("Arial", 10), 
+                 wraplength=700, justify='center').pack()
+        
+        # Bug report template
+        bug_frame = ttk.LabelFrame(self.issues_frame, text="Bug Report Template", padding="15")
+        bug_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        
+        bug_template = """**Bug Description:**
+A clear description of what the bug is.
+
+**Steps to Reproduce:**
+1. Go to '...'
+2. Click on '...'
+3. Enter '...'
+4. See error
+
+**Expected Behavior:**
+What you expected to happen.
+
+**Actual Behavior:**
+What actually happened.
+
+**Environment:**
+- OS: [e.g., Windows 10, Ubuntu 20.04]
+- Python Version: [e.g., 3.9.0]
+- Media Manager Version: [e.g., 1.0.0]
+
+**Additional Context:**
+Any other relevant information, error messages, or screenshots."""
+        
+        bug_text = scrolledtext.ScrolledText(bug_frame, height=12, wrap=tk.WORD)
+        bug_text.pack(fill='both', expand=True)
+        bug_text.insert(1.0, bug_template)
+        
+        # Feature request template
+        feature_frame = ttk.LabelFrame(self.issues_frame, text="Feature Request Template", padding="15")
+        feature_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        
+        feature_template = """**Feature Description:**
+A clear description of the feature you'd like to see.
+
+**Use Case:**
+Describe the problem this feature would solve or the workflow it would improve.
+
+**Proposed Solution:**
+How you think this feature should work.
+
+**Alternatives Considered:**
+Any alternative solutions or features you've considered.
+
+**Additional Context:**
+Any other context, mockups, or examples that would help."""
+        
+        feature_text = scrolledtext.ScrolledText(feature_frame, height=8, wrap=tk.WORD)
+        feature_text.pack(fill='both', expand=True)
+        feature_text.insert(1.0, feature_template)
+        
+        # Action buttons
+        button_frame = ttk.Frame(self.issues_frame)
+        button_frame.pack(fill='x', padx=20, pady=15)
+        
+        ttk.Button(button_frame, text="🐛 Report Bug on GitHub", 
+                  command=self.open_bug_report).pack(side='left', padx=10)
+        ttk.Button(button_frame, text="💡 Request Feature on GitHub", 
+                  command=self.open_feature_request).pack(side='left', padx=10)
+        ttk.Button(button_frame, text="📋 Copy Bug Template", 
+                  command=lambda: self.copy_to_clipboard(bug_template)).pack(side='left', padx=10)
+        ttk.Button(button_frame, text="📋 Copy Feature Template", 
+                  command=lambda: self.copy_to_clipboard(feature_template)).pack(side='left', padx=10)
+    
+    def open_github_repo(self):
+        """Open the GitHub repository in browser"""
+        try:
+            webbrowser.open(f"https://github.com/{__repository__}")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open browser: {e}")
+    
+    def open_discord(self):
+        """Open Discord server in browser"""
+        try:
+            webbrowser.open("https://discord.com/channels/1217932881301737523/1217933464955785297")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open browser: {e}")
+    
+    def open_buymeacoffee(self):
+        """Open Buy Me a Coffee page in browser"""
+        try:
+            webbrowser.open("https://www.buymeacoffee.com/BankaiTech")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open browser: {e}")
+    
+    def open_bug_report(self):
+        """Open GitHub issues page for bug reports"""
+        try:
+            webbrowser.open(f"https://github.com/{__repository__}/issues/new?template=bug_report.md")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open browser: {e}")
+    
+    def open_feature_request(self):
+        """Open GitHub issues page for feature requests"""
+        try:
+            webbrowser.open(f"https://github.com/{__repository__}/issues/new?template=feature_request.md")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not open browser: {e}")
+    
+    def copy_to_clipboard(self, text):
+        """Copy text to clipboard"""
+        try:
+            self.root.clipboard_clear()
+            self.root.clipboard_append(text)
+            messagebox.showinfo("Copied", "Template copied to clipboard!")
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not copy to clipboard: {e}")
     
     def load_settings(self):
         """Load settings into GUI controls"""
