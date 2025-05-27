@@ -1238,7 +1238,7 @@ class MediaManagerGUI:
             
             # Add new entry
             filtered_lines.append(cron_entry.strip())
-            new_crontab = '\n'.join([line for line in filtered_lines if line.strip()])
+            new_crontab = '\n'.join([line for line in filtered_lines if line.strip()]) + '\n'
             
             # Apply new crontab
             process = subprocess.Popen(["crontab", "-"], stdin=subprocess.PIPE, text=True)
@@ -1327,7 +1327,7 @@ class MediaManagerGUI:
             filtered_lines = [line for line in lines if "# MediaManager:" not in line]
             
             # Apply new crontab
-            new_crontab = '\n'.join([line for line in filtered_lines if line.strip()])
+            new_crontab = '\n'.join([line for line in filtered_lines if line.strip()]) + '\n'
             
             process = subprocess.Popen(["crontab", "-"], stdin=subprocess.PIPE, text=True)
             process.communicate(input=new_crontab)
