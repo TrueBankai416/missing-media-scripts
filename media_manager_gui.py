@@ -868,7 +868,8 @@ class MediaManagerGUI:
             ("Generate Media List", 
              "Scans your configured directories for media files and creates a timestamped list. "
              "This is the first step in tracking your media collection. The list includes all "
-             "video files found in your scan directories."),
+             "video files found in your scan directories. Can optionally include addistional extensions"
+             " for different file types"),
             
             ("Check for Missing Media", 
              "Compares the two most recent media lists to identify files that have gone missing. "
