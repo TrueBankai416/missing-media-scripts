@@ -4,6 +4,26 @@ import argparse
 import glob
 from email_utils import send_missing_media_email, create_email_config_hardcoded
 
+def check_for_updates_if_enabled():
+    """Check for updates in a non-intrusive way"""
+    try:
+        from update_checker import UpdateChecker
+        from version import __version__
+        
+        checker = UpdateChecker()
+        update_info = checker.check_for_updates()
+        
+        if not 'error' in update_info and update_info.get('update_available', False):
+            print(f"📢 Media Manager update available: v{update_info['current_version']} → v{update_info['latest_version']}")
+            print(f"   View release: {update_info['release_url']}")
+            print()
+    except ImportError:
+        # Update checker not available, skip silently
+        pass
+    except Exception:
+        # Any error checking updates should be silent to not interfere with main operation
+        pass
+
 def load_expected_titles(expected_titles_file):
     """
     Loads the expected media titles from a file.
@@ -98,7 +118,12 @@ def main():
     parser = argparse.ArgumentParser(description="Generate a list of missing media titles.")
     parser.add_argument('-m', '--media-list-dir', help='Directory containing the media list files.', required=True)
     parser.add_argument('-o', '--output', help='Output file to write the list of missing media titles.', required=True)
+    parser.add_argument('--no-update-check', action='store_true', help='Skip checking for updates')
     args = parser.parse_args()
+
+    # Check for updates unless disabled
+    if not args.no_update_check:
+        check_for_updates_if_enabled()
 
     generate_missing_media_list(args.media_list_dir, args.output)
 
