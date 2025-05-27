@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Windows GUI for Missing Media Scripts
-A tkinter-based GUI to simplify the process of managing media file monitoring on Windows.
+GUI for Missing Media Scripts
+A tkinter-based GUI to simplify the process of managing media file monitoring on Windows and Linux.
 """
 
 import tkinter as tk
@@ -216,7 +216,7 @@ class FilenameFixDialog:
 class MediaManagerGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Media Manager - Windows GUI")
+        self.root.title("Media Manager - GUI")
         self.root.geometry("800x650")
         
         # Configuration file path
