@@ -217,7 +217,21 @@ class MediaManagerGUI:
     def __init__(self, root):
         self.root = root
         self.root.title("Media Manager - GUI")
-        self.root.geometry("800x650")
+        # Start maximized to show all buttons properly
+        try:
+            # Try zoomed state first (Windows)
+            self.root.state('zoomed')
+        except tk.TclError:
+            try:
+                # Alternative for other platforms
+                self.root.attributes('-zoomed', True)
+            except tk.TclError:
+                # Fallback to manual maximization
+                self.root.geometry("1200x800")
+                self.root.update_idletasks()
+                width = self.root.winfo_screenwidth()
+                height = self.root.winfo_screenheight()
+                self.root.geometry(f"{width}x{height}+0+0")
         
         # Configuration file path
         self.config_file = "media_manager_config.json"
@@ -328,10 +342,6 @@ class MediaManagerGUI:
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill='both', expand=True, padx=10, pady=10)
         
-        # Help tab (first tab as requested)
-        self.help_frame = ttk.Frame(notebook)
-        notebook.add(self.help_frame, text="Help")
-        
         # Main tab
         self.main_frame = ttk.Frame(notebook)
         notebook.add(self.main_frame, text="Main")
@@ -352,6 +362,10 @@ class MediaManagerGUI:
         self.logs_frame = ttk.Frame(notebook)
         notebook.add(self.logs_frame, text="Logs & Results")
         
+        # Help tab (moved after Logs & Results as requested)
+        self.help_frame = ttk.Frame(notebook)
+        notebook.add(self.help_frame, text="Help")
+        
         # Info tab
         self.info_frame = ttk.Frame(notebook)
         notebook.add(self.info_frame, text="Info")
@@ -364,12 +378,12 @@ class MediaManagerGUI:
         self.issues_frame = ttk.Frame(notebook)
         notebook.add(self.issues_frame, text="Issues")
         
-        self.create_help_tab()
         self.create_main_tab()
         self.create_config_tab()
         self.create_email_tab()
         self.create_automation_tab()
         self.create_logs_tab()
+        self.create_help_tab()
         self.create_info_tab()
         self.create_support_tab()
         self.create_issues_tab()
@@ -847,9 +861,13 @@ class MediaManagerGUI:
         title_label = ttk.Label(self.help_frame, text="Help & Button Guide", font=("Arial", 16, "bold"))
         title_label.pack(pady=10)
         
+        # Main container frame to center content
+        main_container = ttk.Frame(self.help_frame)
+        main_container.pack(fill='both', expand=True, padx=50, pady=10)
+        
         # Main scrollable frame
-        canvas = tk.Canvas(self.help_frame)
-        scrollbar = ttk.Scrollbar(self.help_frame, orient="vertical", command=canvas.yview)
+        canvas = tk.Canvas(main_container)
+        scrollbar = ttk.Scrollbar(main_container, orient="vertical", command=canvas.yview)
         scrollable_frame = ttk.Frame(canvas)
         
         scrollable_frame.bind(
@@ -857,10 +875,10 @@ class MediaManagerGUI:
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
         
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="n")
         canvas.configure(yscrollcommand=scrollbar.set)
         
-        canvas.pack(side="left", fill="both", expand=True, padx=10)
+        canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
         # Button explanations
