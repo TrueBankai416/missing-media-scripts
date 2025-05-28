@@ -252,22 +252,42 @@ class MediaManagerGUI:
         """Set the application icon with cross-platform support"""
         icon_set = False
         
-        # Try new clipboard + magnifying glass icons first (all platforms)
+        # Try platform-specific icons first
         png_sizes = [64, 48, 32, 24, 16]
-        for size in png_sizes:
-            icon_file = f"media_manager_new_{size}.png"
-            if os.path.exists(icon_file):
-                try:
-                    icon_img = tk.PhotoImage(file=icon_file)
-                    self.root.iconphoto(True, icon_img)
-                    # Store reference to prevent garbage collection
-                    self.icon_img = icon_img
-                    print(f"Set icon using {icon_file}")
-                    icon_set = True
-                    break
-                except Exception as e:
-                    print(f"Failed to load {icon_file}: {e}")
-                    continue
+        
+        # On Windows, try Windows-compatible icons first
+        if platform.system() == "Windows":
+            for size in png_sizes:
+                icon_file = f"media_manager_windows_{size}.png"
+                if os.path.exists(icon_file):
+                    try:
+                        icon_img = tk.PhotoImage(file=icon_file)
+                        self.root.iconphoto(True, icon_img)
+                        # Store reference to prevent garbage collection
+                        self.icon_img = icon_img
+                        print(f"Set icon using {icon_file}")
+                        icon_set = True
+                        break
+                    except Exception as e:
+                        print(f"Failed to load {icon_file}: {e}")
+                        continue
+        
+        # Try new clipboard + magnifying glass icons (all platforms)
+        if not icon_set:
+            for size in png_sizes:
+                icon_file = f"media_manager_new_{size}.png"
+                if os.path.exists(icon_file):
+                    try:
+                        icon_img = tk.PhotoImage(file=icon_file)
+                        self.root.iconphoto(True, icon_img)
+                        # Store reference to prevent garbage collection
+                        self.icon_img = icon_img
+                        print(f"Set icon using {icon_file}")
+                        icon_set = True
+                        break
+                    except Exception as e:
+                        print(f"Failed to load {icon_file}: {e}")
+                        continue
         
         # On Linux, try XPM format if PNG didn't work
         if not icon_set and platform.system() == "Linux":
@@ -314,36 +334,94 @@ class MediaManagerGUI:
                         print(f"Failed to load {icon_file}: {e}")
                         continue
         
-        # Fallback to ICO file (mainly for Windows)
-        if not icon_set and os.path.exists("media_manager_icon.ico"):
-            try:
-                if platform.system() == "Windows":
-                    self.root.iconbitmap("media_manager_icon.ico")
-                    print("Set icon using media_manager_icon.ico")
-                    icon_set = True
-                else:
-                    # On Linux, try to convert ICO to PNG in memory
-                    try:
-                        from PIL import Image
-                        ico_img = Image.open("media_manager_icon.ico")
-                        # Convert to the largest available size
-                        if hasattr(ico_img, 'size'):
-                            # Save as temporary PNG
-                            temp_png = "temp_icon.png"
-                            ico_img.save(temp_png, "PNG")
-                            icon_img = tk.PhotoImage(file=temp_png)
-                            self.root.iconphoto(True, icon_img)
-                            self.icon_img = icon_img
-                            # Clean up temp file
-                            os.remove(temp_png)
-                            print("Set icon using converted ICO file")
-                            icon_set = True
-                    except ImportError:
-                        print("PIL not available for ICO conversion")
-                    except Exception as e:
-                        print(f"Failed to convert ICO file: {e}")
-            except Exception as e:
-                print(f"Failed to set ICO icon: {e}")
+        # Try ICO files for Windows
+        if not icon_set:
+            # Try Windows-compatible ICO first
+            if os.path.exists("media_manager_windows.ico"):
+                try:
+                    if platform.system() == "Windows":
+                        self.root.iconbitmap("media_manager_windows.ico")
+                        print("Set icon using media_manager_windows.ico")
+                        icon_set = True
+                    else:
+                        # On Linux, try to convert ICO to PNG in memory
+                        try:
+                            from PIL import Image
+                            ico_img = Image.open("media_manager_windows.ico")
+                            if hasattr(ico_img, 'size'):
+                                temp_png = "temp_icon.png"
+                                ico_img.save(temp_png, "PNG")
+                                icon_img = tk.PhotoImage(file=temp_png)
+                                self.root.iconphoto(True, icon_img)
+                                self.icon_img = icon_img
+                                os.remove(temp_png)
+                                print("Set icon using converted Windows ICO file")
+                                icon_set = True
+                        except ImportError:
+                            print("PIL not available for ICO conversion")
+                        except Exception as e:
+                            print(f"Failed to convert Windows ICO file: {e}")
+                except Exception as e:
+                    print(f"Failed to set Windows ICO icon: {e}")
+                    
+            # Try new ICO as backup
+            if not icon_set and os.path.exists("media_manager_new.ico"):
+                try:
+                    if platform.system() == "Windows":
+                        self.root.iconbitmap("media_manager_new.ico")
+                        print("Set icon using media_manager_new.ico")
+                        icon_set = True
+                    else:
+                        # On Linux, try to convert ICO to PNG in memory
+                        try:
+                            from PIL import Image
+                            ico_img = Image.open("media_manager_new.ico")
+                            # Convert to the largest available size
+                            if hasattr(ico_img, 'size'):
+                                # Save as temporary PNG
+                                temp_png = "temp_icon.png"
+                                ico_img.save(temp_png, "PNG")
+                                icon_img = tk.PhotoImage(file=temp_png)
+                                self.root.iconphoto(True, icon_img)
+                                self.icon_img = icon_img
+                                # Clean up temp file
+                                os.remove(temp_png)
+                                print("Set icon using converted new ICO file")
+                                icon_set = True
+                        except ImportError:
+                            print("PIL not available for ICO conversion")
+                        except Exception as e:
+                            print(f"Failed to convert new ICO file: {e}")
+                except Exception as e:
+                    print(f"Failed to set new ICO icon: {e}")
+            
+            # Fallback to old ICO file
+            if not icon_set and os.path.exists("media_manager_icon.ico"):
+                try:
+                    if platform.system() == "Windows":
+                        self.root.iconbitmap("media_manager_icon.ico")
+                        print("Set icon using media_manager_icon.ico")
+                        icon_set = True
+                    else:
+                        # On Linux, try to convert ICO to PNG in memory
+                        try:
+                            from PIL import Image
+                            ico_img = Image.open("media_manager_icon.ico")
+                            if hasattr(ico_img, 'size'):
+                                temp_png = "temp_icon.png"
+                                ico_img.save(temp_png, "PNG")
+                                icon_img = tk.PhotoImage(file=temp_png)
+                                self.root.iconphoto(True, icon_img)
+                                self.icon_img = icon_img
+                                os.remove(temp_png)
+                                print("Set icon using converted old ICO file")
+                                icon_set = True
+                        except ImportError:
+                            print("PIL not available for ICO conversion")
+                        except Exception as e:
+                            print(f"Failed to convert old ICO file: {e}")
+                except Exception as e:
+                    print(f"Failed to set old ICO icon: {e}")
         
         # Create a fallback icon if nothing worked
         if not icon_set:

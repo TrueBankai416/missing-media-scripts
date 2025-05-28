@@ -46,6 +46,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='media_manager_new.ico',  # New clipboard + magnifying glass icon
+    icon='media_manager_windows.ico',  # Windows-compatible clipboard + magnifying glass icon
     version_file=None,  # Add path to version file if needed
 )
