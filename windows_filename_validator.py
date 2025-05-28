@@ -8,6 +8,26 @@ import os
 import re
 import argparse
 
+def check_for_updates_if_enabled():
+    """Check for updates in a non-intrusive way"""
+    try:
+        from update_checker import UpdateChecker
+        from version import __version__
+        
+        checker = UpdateChecker()
+        update_info = checker.check_for_updates()
+        
+        if not 'error' in update_info and update_info.get('update_available', False):
+            print(f"📢 Media Manager update available: v{update_info['current_version']} → v{update_info['latest_version']}")
+            print(f"   View release: {update_info['release_url']}")
+            print()
+    except ImportError:
+        # Update checker not available, skip silently
+        pass
+    except Exception:
+        # Any error checking updates should be silent to not interfere with main operation
+        pass
+
 
 class WindowsFilenameValidator:
     """Validates filenames against Windows naming conventions"""
@@ -212,8 +232,13 @@ def main():
                        help='Input file containing list of file paths')
     parser.add_argument('-o', '--output', 
                        help='Output file for the validation report')
+    parser.add_argument('--no-update-check', action='store_true', help='Skip checking for updates')
     
     args = parser.parse_args()
+    
+    # Check for updates unless disabled
+    if not args.no_update_check:
+        check_for_updates_if_enabled()
     
     try:
         validator = WindowsFilenameValidator()

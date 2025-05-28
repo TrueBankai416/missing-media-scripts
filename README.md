@@ -1,89 +1,316 @@
-# missing-media-scripts
-Scripts to compare lists of media and send an email if something is missing from the list
+# Media Manager - Missing Media Detection System
 
-# Notice
-You will first have to open `generate_missing_media_list.py` and configure your email settings. This includes setting your sender name, sender email, receiver email, password, and SMTP server details.
+A comprehensive media file monitoring system that tracks your media collection, detects missing files, and sends notifications when content goes missing. Available as both a user-friendly GUI application and command-line tools.
 
-The `generate_missing_media_list.py` script will only detect a change if the file name or path changes.
+## Features
 
-# Purpose
-The purpose of the `generate_media_list.py` script is to scan the desired directories for `MKV,MP4, and AVI` files and then generate a list with the files and their absolute paths every morning at 5am (if using cron).
+- 🔍 **Media File Scanning**: Automatically scan directories for video files (.mp4, .mkv, .avi)
+- 📊 **Missing Media Detection**: Compare recent scans to identify missing files
+- 📧 **Email Notifications**: Get alerted when media files go missing
+- 🗂️ **File Management**: Automatic retention management (keep only N recent lists)
+- 🖥️ **Cross-Platform GUI**: Easy-to-use graphical interface for Windows and Linux
+- ⚙️ **Automation Support**: Schedule tasks with Windows Task Scheduler or Linux cron
+- 🛠️ **Windows Compatibility**: Check and fix Windows filename issues
+- 💻 **Headless Operation**: Run without GUI for servers and automated systems
 
-The purpose of the `generate_missing_media.py` script is to compare the last two lists created by the `generate_media_list.py` script. If there is a missing entry in the most recent list, it will generate another list with the names and absolute paths of the missing media files. From there it will also email you the list of missing content (this script will run every morning at 6am if using cron).
+## Quick Start
 
-The purpose of the `manage_txt_files.sh` is to rotate the lists and only allow 100 lists to exist on the system. (this script will run every morning at 6:05am if using cron).
+### Windows Users (Recommended)
 
-# Discord
-https://discord.com/channels/1217932881301737523/1217933464955785297
+**Option 1: Standalone Executable** (See `BUILD_EXECUTABLE.md`)
+1. Download or clone this repository
+2. Build or download the `.exe` file
+3. Run `MediaManager.exe` directly (no Python installation required)
 
-# How to Use and Schedule Scripts with Cron
 
-## generate_media_list.py
-This Python script generates a list of media files (videos) from specified directories and saves them to an output file. To run this script, you need to provide the directories to search for media files and the path to the output file where the list will be saved.
+**Option 2: GUI Application**
+1. Download or clone this repository
+2. Double-click `run_gui.bat` to start the GUI
+3. Configure your media directories in the "Main Configuration" tab
+4. Click "Run Complete Check" to start monitoring
 
-### Usage
+
+### Linux Users
+
+**GUI Mode:**
 ```bash
-/path/to/generate_media_list.py -d /your/directory1 /your/directory2 -o /path/to/output/media_list.txt
+# Install tkinter if needed (Ubuntu/Debian)
+sudo apt-get install python3-tk
+
+# Clone and run
+git clone https://github.com/TrueBankai416/missing-media-scripts.git
+cd missing-media-scripts
+python3 media_manager_gui.py
 ```
 
-### Scheduling with Cron
-To run this script every day at 5 AM, you can add the following line to your crontab:
+**Command Line Mode:**
 ```bash
-0 5 * * * /path/to/generate_media_list.py -d /your/directory1 /your/directory2 -o /path/to/output/media_list.txt
+# Generate media list
+python3 generate_media_list.py -d /path/to/media1 /path/to/media2 -o media_list.txt
+
+# Check for missing media
+python3 generate_missing_media_list.py -m /path/to/lists -o missing_media.txt
+
+# Manage file retention
+python3 manage_files.py -d /path/to/lists -n 100
 ```
 
-## generate_missing_media_list.py
-This Python script identifies missing media files by comparing the most recent media list with the previous one. It requires the directory containing the media list files and the path to the output file where the list of missing media titles will be saved.
+### Headless/Server Systems
 
-### Usage
+For servers or automated systems without GUI:
+
 ```bash
-/path/to/generate_missing_media_list.py -m /path/to/media_list_dir -o /path/to/output/missing_media_list.txt
+# Complete automated check
+python3 media_manager_gui.py --automated-complete-check
+
+# Individual operations
+python3 media_manager_gui.py --automated-generate-media-list
+python3 media_manager_gui.py --automated-check-missing-media
+python3 media_manager_gui.py --automated-manage-file-retention
+python3 media_manager_gui.py --automated-check-windows-filenames
 ```
 
-### Scheduling with Cron
-To run this script every day at 6 AM, you can add the following line to your crontab:
-```bash
-0 6 * * * /path/to/generate_missing_media_list.py -m /path/to/media_list_dir -o /path/to/output/missing_media_list.txt
+## Installation
+
+### Requirements
+
+- **Python 3.6+** (not required for Windows .exe version)
+- **tkinter** (for GUI - usually included with Python)
+- **Internet connection** (for email notifications)
+
+### Dependencies
+
+This project uses only Python standard library modules:
+- `tkinter` (GUI)
+- `os`, `json`, `threading`, `datetime`, `glob`
+- `smtplib`, `email` (notifications)
+- `pathlib`, `argparse`
+
+No external packages required!
+
+### Setup
+
+1. **Clone the repository:**
+   ```bash
+   git clone https://github.com/TrueBankai416/missing-media-scripts.git
+   cd missing-media-scripts
+   ```
+
+2. **For GUI usage:** Run the appropriate launcher for your system
+3. **For command-line usage:** Use the individual Python scripts directly
+
+## Configuration
+
+### Using the GUI (Recommended)
+
+1. **Launch the GUI** using `python3 media_manager_gui.py` or `run_gui.bat`
+2. **Configure scan directories** in the "Main Configuration" tab
+3. **Set up email notifications** in the "Email Configuration" tab (optional)
+4. **Configure automation** in the "Automation" tab (optional)
+5. **Save settings** - configuration is automatically persisted
+
+### Manual Configuration
+
+Create a `media_manager_config.json` file based on `example_config.json`:
+
+```json
+{
+    "scan_directories": [
+        "/path/to/movies",
+        "/path/to/tv-shows"
+    ],
+    "output_directory": "/path/to/output",
+    "file_extensions": {
+        "media": [".mp4", ".mkv", ".avi"],
+        "additional": [".mov", ".wmv", ".flv", ".webm"]
+    },
+    "email": {
+        "enabled": true,
+        "sender_email": "your-email@gmail.com",
+        "receiver_email": "alerts@example.com",
+        "password": "your-app-password",
+        "smtp_server": "smtp.gmail.com",
+        "smtp_port": 587
+    },
+    "file_retention_count": 100
+}
 ```
 
-## manage_txt_files.sh
-This bash script manages the retention of text files in a specified directory, keeping only the latest 100 files. Before running, ensure the script has the correct path to the directory where the text files are stored.
+### Email Setup
 
-### Usage
-Make the script executable:
+**For Gmail:**
+1. Enable 2-Factor Authentication
+2. Create an App Password (Google Account → Security → 2-Step Verification → App passwords)
+3. Use the app password (not your regular password) in the configuration
+
+**For other providers:**
+- **Outlook/Hotmail**: `smtp-mail.outlook.com:587`
+- **Yahoo**: `smtp.mail.yahoo.com:587`
+- **Gmail**: `smtp.gmail.com:587`
+
+## Automation
+
+### Using the GUI Automation (Recommended)
+
+1. **Open the Automation tab** in the GUI
+2. **Enable automation** and configure task scheduling
+3. **Click "Apply Scheduled Tasks"** to create platform-specific scheduled tasks
+4. **Choose between:**
+   - **Individual tasks** with different schedules
+   - **Complete Check** (recommended) - runs all operations in sequence
+
+### Manual Scheduling
+
+**Linux (cron):**
 ```bash
-chmod +x /path/to/manage_txt_files.sh
+# Edit crontab
+crontab -e
+
+# Add these lines for daily automation at 5 AM
+0 5 * * * cd /path/to/missing-media-scripts && python3 media_manager_gui.py --automated-complete-check
 ```
 
-Run the script:
+**Windows (Task Scheduler):**
+1. Open Task Scheduler
+2. Create Basic Task
+3. Set trigger: Daily at 5:00 AM
+4. Action: Start a program
+5. Program: `python.exe`
+6. Arguments: `path\to\media_manager_gui.py --automated-complete-check`
+7. Start in: Directory containing the scripts
+
+## Usage Examples
+
+### Basic Operations
+
+**Scan directories and generate media list:**
 ```bash
-/path/to/manage_txt_files.sh
+python3 generate_media_list.py -d /home/user/Movies /home/user/TV -o media_list.txt
 ```
 
-### Scheduling with Cron
-To run this script every day at 6:05 AM, you can add the following line to your crontab:
+**Check for missing media:**
 ```bash
-5 6 * * * /path/to/manage_txt_files.sh
+python3 generate_missing_media_list.py -m /path/to/lists -o missing_media.txt
 ```
 
-## Setting up Cron Jobs
-1. Open your terminal.
-2. Type `crontab -e` to edit your cron jobs.
-3. Add the lines provided above for each script to the crontab file.
-4. Save and exit the editor. Cron will automatically apply the changes.
+**Clean up old files:**
+```bash
+python3 manage_files.py -d /path/to/lists -n 50
+```
 
-Remember to replace `/path/to/` with the actual paths to your scripts and directories.
+**Check Windows filename compatibility:**
+```bash
+python3 windows_filename_validator.py -i media_list.txt -o filename_report.txt
+```
 
-##For reference
-Here is my setup
-![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/f47e7c33-06b4-42cd-9107-d251a88d7656)
+### GUI Automation Commands
 
-![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/bea11c19-7673-401b-abe9-044c75d1362d)
+**Run complete check (all operations):**
+```bash
+python3 media_manager_gui.py --automated-complete-check
+```
 
-![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/c21528a3-6528-4520-b328-d81b9fc38804)
+**Individual operations:**
+```bash
+python3 media_manager_gui.py --automated-generate-media-list
+python3 media_manager_gui.py --automated-check-missing-media
+python3 media_manager_gui.py --automated-manage-file-retention
+python3 media_manager_gui.py --automated-check-windows-filenames
+```
 
-![image](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/8fa4114a-d6cc-4646-b7f4-5c58d723fe38)
+**Test automation setup:**
+```bash
+python3 media_manager_gui.py --automated-test
+```
 
-![email](https://github.com/TrueBankai416/missing-media-scripts/assets/97103466/a84c473e-fbb6-44a9-8430-26a8da50ff83)
+## File Structure
 
+```
+missing-media-scripts/
+├── media_manager_gui.py          # Main GUI application
+├── generate_media_list.py        # Core media scanning
+├── generate_missing_media_list.py # Missing media detection
+├── manage_files.py               # File retention management
+├── windows_filename_validator.py # Windows compatibility checker
+├── email_utils.py                # Email notification system
+├── run_gui.bat                   # Windows GUI launcher
+├── media_manager_config.json     # Configuration file (auto-generated)
+├── example_config.json           # Example configuration
+├── requirements.txt              # Python dependencies (for building .exe)
+├── AUTOMATION_README.md          # Detailed automation guide
+├── GUI_README.md                 # Detailed GUI documentation
+├── BUILD_EXECUTABLE.md           # Instructions for building .exe
+└── lists/                        # Default output directory
+    ├── media_list_*.txt          # Generated media lists
+    └── missing_media_*.txt       # Missing media reports
+```
 
+## Troubleshooting
+
+### Common Issues
+
+**"No module named 'tkinter'"**
+```bash
+# Ubuntu/Debian
+sudo apt-get install python3-tk
+
+# CentOS/RHEL/Fedora
+sudo yum install tkinter
+# or
+sudo dnf install python3-tkinter
+```
+
+**Email sending fails**
+- Verify email credentials and app password
+- Check firewall settings
+- Ensure SMTP server and port are correct
+- For Gmail: Use app passwords, not regular passwords
+
+**Permission errors**
+- Ensure read access to media directories
+- Ensure write access to output directory
+- On Windows: Run as administrator if accessing system directories
+
+**No files found**
+- Verify directory paths are correct
+- Check that directories contain supported file types (.mp4, .mkv, .avi)
+- Ensure directories are accessible and not hidden
+
+### Platform-Specific Notes
+
+**Windows:**
+- Use backslashes in paths or raw strings: `r"C:\Users\Name\Videos"`
+- Some antivirus software may interfere with file operations
+- Long path support may need to be enabled for very long filenames
+
+**Linux:**
+- Hidden directories (starting with '.') are automatically ignored
+- Ensure proper file permissions for output directories
+- For system-wide automation, consider using `/etc/cron.d/`
+
+**Headless Systems:**
+- Use `--automated-*` flags for GUI-less operation
+- Email notifications are especially useful for monitoring
+- Consider using `screen` or `tmux` for long-running operations
+
+## Support and Community
+
+- **GitHub Issues**: Report bugs or request features
+- **Discord**: Join the community at https://discord.com/channels/1217932881301737523/1217933464955785297
+- **Documentation**: Check `AUTOMATION_README.md` and `GUI_README.md` for detailed guides
+
+<a href="https://www.buymeacoffee.com/BankaiTech"><img src="https://img.buymeacoffee.com/button-api/?text=Buy me a beer&emoji=🍺&slug=BankaiTech&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff" /></a>
+
+## License
+
+This project is licensed under the GNU General Public License v3.0 - see the LICENSE file for details.
+
+## Changelog
+
+**Recent improvements:**
+- Added cross-platform GUI with automation support
+- Implemented Windows filename compatibility checking
+- Enhanced email notification system
+- Added headless operation modes
+- Improved file retention management
+- Added comprehensive configuration system
