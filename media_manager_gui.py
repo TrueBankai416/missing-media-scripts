@@ -216,7 +216,14 @@ class FilenameFixDialog:
 class MediaManagerGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Media Manager - GUI")
+        self.root.title("Media Manager - Professional")
+        
+        # Set custom icon with cross-platform support
+        self.set_application_icon()
+        
+        # Apply modern styling
+        self.setup_modern_style()
+        
         # Start maximized to show all buttons properly
         try:
             # Try zoomed state first (Windows)
@@ -240,6 +247,346 @@ class MediaManagerGUI:
         # Create the GUI
         self.create_widgets()
         self.load_settings()
+    
+    def set_application_icon(self):
+        """Set the application icon with cross-platform support"""
+        icon_set = False
+        print(f"Setting icon on {platform.system()}")
+        
+        # Handle PyInstaller executable vs script paths
+        if getattr(sys, 'frozen', False):
+            # Running as executable
+            icon_base_path = sys._MEIPASS
+            print(f"Running as executable, icon path: {icon_base_path}")
+        else:
+            # Running as script
+            icon_base_path = os.path.dirname(os.path.abspath(__file__))
+            print(f"Running as script, icon path: {icon_base_path}")
+        
+        def get_icon_path(filename):
+            return os.path.join(icon_base_path, filename)
+        
+        # Try platform-specific icons first
+        png_sizes = [64, 48, 32, 24, 16]
+        
+        # On Windows, try ICO files first for best compatibility
+        if platform.system() == "Windows":
+            # Try the final optimized ICO first
+            final_ico_path = get_icon_path("media_manager_final.ico")
+            if os.path.exists(final_ico_path):
+                try:
+                    self.root.iconbitmap(final_ico_path)
+                    print("Set icon using media_manager_final.ico")
+                    icon_set = True
+                except Exception as e:
+                    print(f"Failed to set final ICO icon: {e}")
+            
+            # Try debug ICO for testing
+            if not icon_set:
+                debug_ico_path = get_icon_path("debug_test.ico")
+                if os.path.exists(debug_ico_path):
+                    try:
+                        self.root.iconbitmap(debug_ico_path)
+                        print("Set icon using debug_test.ico")
+                        icon_set = True
+                    except Exception as e:
+                        print(f"Failed to set debug ICO icon: {e}")
+            
+            # Try new Windows solid PNGs
+            if not icon_set:
+                for size in [64, 48, 40, 32, 24, 20, 16]:
+                    icon_filename = f"windows_solid_{size}.png"
+                    icon_path = get_icon_path(icon_filename)
+                    if os.path.exists(icon_path):
+                        try:
+                            icon_img = tk.PhotoImage(file=icon_path)
+                            self.root.iconphoto(True, icon_img)
+                            self.root.iconphoto(False, icon_img)
+                            self.icon_img = icon_img
+                            print(f"Set icon using {icon_filename}")
+                            icon_set = True
+                            break
+                        except Exception as e:
+                            print(f"Failed to load {icon_filename}: {e}")
+                            continue
+            
+            # Try older solid icons as backup
+            if not icon_set:
+                for size in [48, 32, 24, 16]:
+                    icon_filename = f"media_manager_solid_{size}.png"
+                    icon_path = get_icon_path(icon_filename)
+                    if os.path.exists(icon_path):
+                        try:
+                            icon_img = tk.PhotoImage(file=icon_path)
+                            self.root.iconphoto(True, icon_img)
+                            self.root.iconphoto(False, icon_img)
+                            self.icon_img = icon_img
+                            print(f"Set icon using {icon_filename}")
+                            icon_set = True
+                            break
+                        except Exception as e:
+                            print(f"Failed to load {icon_filename}: {e}")
+                            continue
+        
+        # Try new clipboard + magnifying glass icons (all platforms)
+        if not icon_set:
+            for size in png_sizes:
+                icon_filename = f"media_manager_new_{size}.png"
+                icon_path = get_icon_path(icon_filename)
+                if os.path.exists(icon_path):
+                    try:
+                        icon_img = tk.PhotoImage(file=icon_path)
+                        self.root.iconphoto(True, icon_img)
+                        # Store reference to prevent garbage collection
+                        self.icon_img = icon_img
+                        print(f"Set icon using {icon_filename}")
+                        icon_set = True
+                        break
+                    except Exception as e:
+                        print(f"Failed to load {icon_filename}: {e}")
+                        continue
+        
+        # On Linux, try XPM format if PNG didn't work
+        if not icon_set and platform.system() == "Linux":
+            # Try XPM format (native Linux format)
+            if os.path.exists("media_manager_clipboard.xpm"):
+                try:
+                    self.root.iconbitmap("@media_manager_clipboard.xpm")
+                    print("Set icon using media_manager_clipboard.xpm")
+                    icon_set = True
+                except Exception as e:
+                    print(f"Failed to load XMP icon: {e}")
+            
+            # Fallback to simple icons for Linux
+            if not icon_set:
+                for size in png_sizes:
+                    icon_file = f"media_manager_simple_{size}.png"
+                    if os.path.exists(icon_file):
+                        try:
+                            icon_img = tk.PhotoImage(file=icon_file)
+                            self.root.iconphoto(True, icon_img)
+                            self.icon_img = icon_img
+                            print(f"Set icon using {icon_file}")
+                            icon_set = True
+                            break
+                        except Exception as e:
+                            print(f"Failed to load {icon_file}: {e}")
+                            continue
+        
+        # Try original PNG icons (all platforms)
+        if not icon_set:
+            png_sizes = [64, 48, 32, 16]  # Try larger sizes first
+            for size in png_sizes:
+                icon_file = f"media_manager_icon_{size}.png"
+                if os.path.exists(icon_file):
+                    try:
+                        icon_img = tk.PhotoImage(file=icon_file)
+                        self.root.iconphoto(True, icon_img)
+                        # Store reference to prevent garbage collection
+                        self.icon_img = icon_img
+                        print(f"Set icon using {icon_file}")
+                        icon_set = True
+                        break
+                    except Exception as e:
+                        print(f"Failed to load {icon_file}: {e}")
+                        continue
+        
+        # Try ICO files for Windows
+        if not icon_set:
+            # Try solid ICO first (best Windows compatibility)
+            if os.path.exists("media_manager_solid.ico"):
+                try:
+                    if platform.system() == "Windows":
+                        self.root.iconbitmap("media_manager_solid.ico")
+                        print("Set icon using media_manager_solid.ico")
+                        icon_set = True
+                    else:
+                        # On Linux, try to convert ICO to PNG in memory
+                        try:
+                            from PIL import Image
+                            ico_img = Image.open("media_manager_solid.ico")
+                            if hasattr(ico_img, 'size'):
+                                temp_png = "temp_icon.png"
+                                ico_img.save(temp_png, "PNG")
+                                icon_img = tk.PhotoImage(file=temp_png)
+                                self.root.iconphoto(True, icon_img)
+                                self.icon_img = icon_img
+                                os.remove(temp_png)
+                                print("Set icon using converted solid ICO file")
+                                icon_set = True
+                        except ImportError:
+                            print("PIL not available for ICO conversion")
+                        except Exception as e:
+                            print(f"Failed to convert solid ICO file: {e}")
+                except Exception as e:
+                    print(f"Failed to set solid ICO icon: {e}")
+                    
+            # Try Windows-compatible ICO as backup
+            if not icon_set and os.path.exists("media_manager_windows.ico"):
+                try:
+                    if platform.system() == "Windows":
+                        self.root.iconbitmap("media_manager_windows.ico")
+                        print("Set icon using media_manager_windows.ico")
+                        icon_set = True
+                    else:
+                        # On Linux, try to convert ICO to PNG in memory
+                        try:
+                            from PIL import Image
+                            ico_img = Image.open("media_manager_windows.ico")
+                            if hasattr(ico_img, 'size'):
+                                temp_png = "temp_icon.png"
+                                ico_img.save(temp_png, "PNG")
+                                icon_img = tk.PhotoImage(file=temp_png)
+                                self.root.iconphoto(True, icon_img)
+                                self.icon_img = icon_img
+                                os.remove(temp_png)
+                                print("Set icon using converted Windows ICO file")
+                                icon_set = True
+                        except ImportError:
+                            print("PIL not available for ICO conversion")
+                        except Exception as e:
+                            print(f"Failed to convert Windows ICO file: {e}")
+                except Exception as e:
+                    print(f"Failed to set Windows ICO icon: {e}")
+                    
+            # Try new ICO as backup
+            if not icon_set and os.path.exists("media_manager_new.ico"):
+                try:
+                    if platform.system() == "Windows":
+                        self.root.iconbitmap("media_manager_new.ico")
+                        print("Set icon using media_manager_new.ico")
+                        icon_set = True
+                    else:
+                        # On Linux, try to convert ICO to PNG in memory
+                        try:
+                            from PIL import Image
+                            ico_img = Image.open("media_manager_new.ico")
+                            # Convert to the largest available size
+                            if hasattr(ico_img, 'size'):
+                                # Save as temporary PNG
+                                temp_png = "temp_icon.png"
+                                ico_img.save(temp_png, "PNG")
+                                icon_img = tk.PhotoImage(file=temp_png)
+                                self.root.iconphoto(True, icon_img)
+                                self.icon_img = icon_img
+                                # Clean up temp file
+                                os.remove(temp_png)
+                                print("Set icon using converted new ICO file")
+                                icon_set = True
+                        except ImportError:
+                            print("PIL not available for ICO conversion")
+                        except Exception as e:
+                            print(f"Failed to convert new ICO file: {e}")
+                except Exception as e:
+                    print(f"Failed to set new ICO icon: {e}")
+            
+            # Fallback to old ICO file
+            if not icon_set and os.path.exists("media_manager_icon.ico"):
+                try:
+                    if platform.system() == "Windows":
+                        self.root.iconbitmap("media_manager_icon.ico")
+                        print("Set icon using media_manager_icon.ico")
+                        icon_set = True
+                    else:
+                        # On Linux, try to convert ICO to PNG in memory
+                        try:
+                            from PIL import Image
+                            ico_img = Image.open("media_manager_icon.ico")
+                            if hasattr(ico_img, 'size'):
+                                temp_png = "temp_icon.png"
+                                ico_img.save(temp_png, "PNG")
+                                icon_img = tk.PhotoImage(file=temp_png)
+                                self.root.iconphoto(True, icon_img)
+                                self.icon_img = icon_img
+                                os.remove(temp_png)
+                                print("Set icon using converted old ICO file")
+                                icon_set = True
+                        except ImportError:
+                            print("PIL not available for ICO conversion")
+                        except Exception as e:
+                            print(f"Failed to convert old ICO file: {e}")
+                except Exception as e:
+                    print(f"Failed to set old ICO icon: {e}")
+        
+        # Create a fallback icon if nothing worked
+        if not icon_set:
+            try:
+                # Create a simple fallback icon
+                self.create_fallback_icon()
+            except Exception as e:
+                print(f"Failed to create fallback icon: {e}")
+    
+    def create_fallback_icon(self):
+        """Create a simple fallback icon programmatically"""
+        try:
+            # Create a simple 32x32 icon with basic design
+            icon_data = '''
+                R0lGODlhIAAgAPEAAAAAAP///4CAgP///yH5BAEAAAMALAAAAAAgACAAAAJxnI+py+0Po5y02ouz3rz7
+                D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsOi8fk
+                svmMTqvX7Lb7DY/L5/S6/Y7P6/f8vv8PGCg4SFhoeIiYqLjI2Oj4CBkpOUlZaXmJADs=
+            '''
+            import base64
+            icon_img = tk.PhotoImage(data=icon_data)
+            self.root.iconphoto(True, icon_img)
+            self.icon_img = icon_img
+            print("Set fallback icon")
+        except Exception as e:
+            print(f"Failed to create fallback icon: {e}")
+    
+    def setup_modern_style(self):
+        """Apply modern styling to the GUI"""
+        self.style = ttk.Style()
+        
+        # Try to use a more modern theme if available
+        available_themes = self.style.theme_names()
+        if 'clam' in available_themes:
+            self.style.theme_use('clam')
+        elif 'alt' in available_themes:
+            self.style.theme_use('alt')
+        
+        # Configure modern colors
+        self.bg_color = "#f8f9fa"  # Light gray background
+        self.accent_color = "#4a90e2"  # Modern blue
+        self.dark_bg = "#343a40"  # Dark background for contrast
+        self.light_text = "#ffffff"  # White text
+        self.dark_text = "#212529"  # Dark text
+        self.success_color = "#28a745"  # Green for success
+        self.danger_color = "#dc3545"  # Red for errors
+        
+        # Configure root window
+        self.root.configure(bg=self.bg_color)
+        
+        # Store whether modern styles are available
+        self.modern_styles_available = True
+        
+        try:
+            # Configure ttk styles with error handling
+            self.style.configure('Title.TLabel',
+                               background=self.bg_color,
+                               foreground=self.dark_text,
+                               font=('Segoe UI', 14, 'bold'))
+            
+            self.style.configure('Modern.TButton',
+                               font=('Segoe UI', 9))
+            
+            self.style.map('Modern.TButton',
+                         background=[('active', '#357abd'),
+                                   ('pressed', '#2968a3')])
+            
+            self.style.configure('Success.TButton',
+                               font=('Segoe UI', 9))
+            
+            self.style.map('Success.TButton',
+                         background=[('active', '#218838'),
+                                   ('pressed', '#1e7e34')])
+            
+            # Try to configure more complex styles
+            self.style.configure('Modern.TProgressbar',
+                               background=self.accent_color)
+            
+        except Exception as e:
+            print(f"Warning: Some styling may not be available: {e}")
+            self.modern_styles_available = False
         
     def load_config(self):
         """Load configuration from JSON file"""
@@ -338,7 +685,7 @@ class MediaManagerGUI:
     
     def create_widgets(self):
         """Create the main GUI widgets"""
-        # Create notebook for tabs
+        # Create notebook for tabs with fallback styling
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill='both', expand=True, padx=10, pady=10)
         
@@ -390,54 +737,99 @@ class MediaManagerGUI:
     
     def create_main_tab(self):
         """Create the main operations tab"""
-        # Title
-        title_label = ttk.Label(self.main_frame, text="Media Manager", font=("Arial", 16, "bold"))
-        title_label.pack(pady=10)
+        # Title with fallback styling
+        try:
+            title_label = ttk.Label(self.main_frame, text="Media Manager", style="Title.TLabel")
+        except:
+            title_label = ttk.Label(self.main_frame, text="Media Manager", font=("Arial", 14, "bold"))
+        title_label.pack(pady=15)
         
-        # Operations frame
-        ops_frame = ttk.LabelFrame(self.main_frame, text="Operations", padding="10")
-        ops_frame.pack(fill='x', padx=10, pady=5)
+        # Operations frame with fallback styling
+        ops_frame = ttk.LabelFrame(self.main_frame, text="Operations", padding="15")
+        ops_frame.pack(fill='x', padx=15, pady=10)
         
         # Generate media list button
-        ttk.Button(ops_frame, text="Generate Media List", 
-                  command=self.generate_media_list_threaded,
-                  width=25).pack(pady=5)
+        try:
+            btn1 = ttk.Button(ops_frame, text="📁 Generate Media List", 
+                            command=self.generate_media_list_threaded,
+                            width=30, style="Modern.TButton")
+        except:
+            btn1 = ttk.Button(ops_frame, text="📁 Generate Media List", 
+                            command=self.generate_media_list_threaded,
+                            width=30)
+        btn1.pack(pady=8)
         
         # Check for missing media button
-        ttk.Button(ops_frame, text="Check for Missing Media", 
-                  command=self.check_missing_media_threaded,
-                  width=25).pack(pady=5)
+        try:
+            btn2 = ttk.Button(ops_frame, text="🔍 Check for Missing Media", 
+                            command=self.check_missing_media_threaded,
+                            width=30, style="Modern.TButton")
+        except:
+            btn2 = ttk.Button(ops_frame, text="🔍 Check for Missing Media", 
+                            command=self.check_missing_media_threaded,
+                            width=30)
+        btn2.pack(pady=8)
         
         # Manage files button
-        ttk.Button(ops_frame, text="Manage File Retention", 
-                  command=self.manage_files_threaded,
-                  width=25).pack(pady=5)
+        try:
+            btn3 = ttk.Button(ops_frame, text="🗂️ Manage File Retention", 
+                            command=self.manage_files_threaded,
+                            width=30, style="Modern.TButton")
+        except:
+            btn3 = ttk.Button(ops_frame, text="🗂️ Manage File Retention", 
+                            command=self.manage_files_threaded,
+                            width=30)
+        btn3.pack(pady=8)
         
         # Windows filename validation button
-        ttk.Button(ops_frame, text="Check Windows Filename Compatibility", 
-                  command=self.check_windows_filenames_threaded,
-                  width=35).pack(pady=5)
+        try:
+            btn4 = ttk.Button(ops_frame, text="✅ Check Windows Filename Compatibility", 
+                            command=self.check_windows_filenames_threaded,
+                            width=40, style="Modern.TButton")
+        except:
+            btn4 = ttk.Button(ops_frame, text="✅ Check Windows Filename Compatibility", 
+                            command=self.check_windows_filenames_threaded,
+                            width=40)
+        btn4.pack(pady=8)
         
         # Filename fixing button
-        ttk.Button(ops_frame, text="View & Fix Filename Issues", 
-                  command=self.view_and_fix_filenames,
-                  width=25).pack(pady=5)
+        try:
+            btn5 = ttk.Button(ops_frame, text="🔧 View & Fix Filename Issues", 
+                            command=self.view_and_fix_filenames,
+                            width=30, style="Modern.TButton")
+        except:
+            btn5 = ttk.Button(ops_frame, text="🔧 View & Fix Filename Issues", 
+                            command=self.view_and_fix_filenames,
+                            width=30)
+        btn5.pack(pady=8)
         
         # Run all button
-        ttk.Button(ops_frame, text="Run Complete Check", 
-                  command=self.run_complete_check_threaded,
-                  width=25).pack(pady=10)
+        try:
+            btn6 = ttk.Button(ops_frame, text="⚡ Run Complete Check", 
+                            command=self.run_complete_check_threaded,
+                            width=30, style="Success.TButton")
+        except:
+            btn6 = ttk.Button(ops_frame, text="⚡ Run Complete Check", 
+                            command=self.run_complete_check_threaded,
+                            width=30)
+        btn6.pack(pady=15)
         
-        # Status frame
-        status_frame = ttk.LabelFrame(self.main_frame, text="Status", padding="10")
-        status_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        # Status frame with fallback styling
+        status_frame = ttk.LabelFrame(self.main_frame, text="Status", padding="15")
+        status_frame.pack(fill='both', expand=True, padx=15, pady=10)
         
-        self.status_text = scrolledtext.ScrolledText(status_frame, height=15, state='disabled')
+        self.status_text = scrolledtext.ScrolledText(status_frame, height=15, state='disabled',
+                                                    font=('Consolas', 9), 
+                                                    bg='#ffffff', fg='#212529',
+                                                    insertbackground='#212529')
         self.status_text.pack(fill='both', expand=True)
         
-        # Progress bar
-        self.progress = ttk.Progressbar(self.main_frame, mode='indeterminate')
-        self.progress.pack(fill='x', padx=10, pady=5)
+        # Progress bar with fallback styling
+        try:
+            self.progress = ttk.Progressbar(self.main_frame, mode='indeterminate', style="Modern.TProgressbar")
+        except:
+            self.progress = ttk.Progressbar(self.main_frame, mode='indeterminate')
+        self.progress.pack(fill='x', padx=15, pady=10)
     
     def create_config_tab(self):
         """Create the main configuration tab"""

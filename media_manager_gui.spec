@@ -6,7 +6,19 @@ a = Analysis(
     ['media_manager_gui.py'],
     pathex=[],
     binaries=[],
-    datas=[],
+    datas=[
+        ('media_manager_final.ico', '.'),
+        ('media_manager_solid.ico', '.'),
+        ('media_manager_windows.ico', '.'),
+        ('media_manager_new.ico', '.'),
+        ('debug_test.ico', '.'),
+        ('windows_solid_*.png', '.'),
+        ('media_manager_solid_*.png', '.'),
+        ('media_manager_windows_*.png', '.'),
+        ('media_manager_new_*.png', '.'),
+        ('media_manager_simple_*.png', '.'),
+        ('media_manager_*.bmp', '.'),
+    ],
     hiddenimports=[
         'tkinter',
         'tkinter.ttk',
@@ -46,6 +58,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon=None,  # Add path to .ico file if you have one
+    icon='media_manager_final.ico',  # Final multi-size ICO with proper Windows compatibility
     version_file=None,  # Add path to version file if needed
 )
