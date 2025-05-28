@@ -252,34 +252,49 @@ class MediaManagerGUI:
         """Set the application icon with cross-platform support"""
         icon_set = False
         
-        # On Linux, try simple icons first (better compatibility)
-        if platform.system() == "Linux":
-            # Try simple PNG icons first
-            png_sizes = [64, 48, 32, 24, 16]
-            for size in png_sizes:
-                icon_file = f"media_manager_simple_{size}.png"
-                if os.path.exists(icon_file):
-                    try:
-                        icon_img = tk.PhotoImage(file=icon_file)
-                        self.root.iconphoto(True, icon_img)
-                        # Store reference to prevent garbage collection
-                        self.icon_img = icon_img
-                        print(f"Set icon using {icon_file}")
-                        icon_set = True
-                        break
-                    except Exception as e:
-                        print(f"Failed to load {icon_file}: {e}")
-                        continue
-            
-            # Try XPM format (native Linux format)
-            if not icon_set and os.path.exists("media_manager_icon.xpm"):
+        # Try new clipboard + magnifying glass icons first (all platforms)
+        png_sizes = [64, 48, 32, 24, 16]
+        for size in png_sizes:
+            icon_file = f"media_manager_new_{size}.png"
+            if os.path.exists(icon_file):
                 try:
-                    # XPM is better supported on Linux
-                    self.root.iconbitmap("@media_manager_icon.xpm")
-                    print("Set icon using media_manager_icon.xpm")
+                    icon_img = tk.PhotoImage(file=icon_file)
+                    self.root.iconphoto(True, icon_img)
+                    # Store reference to prevent garbage collection
+                    self.icon_img = icon_img
+                    print(f"Set icon using {icon_file}")
+                    icon_set = True
+                    break
+                except Exception as e:
+                    print(f"Failed to load {icon_file}: {e}")
+                    continue
+        
+        # On Linux, try XPM format if PNG didn't work
+        if not icon_set and platform.system() == "Linux":
+            # Try XPM format (native Linux format)
+            if os.path.exists("media_manager_clipboard.xpm"):
+                try:
+                    self.root.iconbitmap("@media_manager_clipboard.xpm")
+                    print("Set icon using media_manager_clipboard.xpm")
                     icon_set = True
                 except Exception as e:
-                    print(f"Failed to load XPM icon: {e}")
+                    print(f"Failed to load XMP icon: {e}")
+            
+            # Fallback to simple icons for Linux
+            if not icon_set:
+                for size in png_sizes:
+                    icon_file = f"media_manager_simple_{size}.png"
+                    if os.path.exists(icon_file):
+                        try:
+                            icon_img = tk.PhotoImage(file=icon_file)
+                            self.root.iconphoto(True, icon_img)
+                            self.icon_img = icon_img
+                            print(f"Set icon using {icon_file}")
+                            icon_set = True
+                            break
+                        except Exception as e:
+                            print(f"Failed to load {icon_file}: {e}")
+                            continue
         
         # Try original PNG icons (all platforms)
         if not icon_set:

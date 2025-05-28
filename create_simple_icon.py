@@ -7,78 +7,73 @@ from PIL import Image, ImageDraw
 import os
 
 def create_simple_icon(size=64):
-    """Create a simple, high-contrast icon that works well on Linux"""
+    """Create a simple clipboard + magnifying glass icon for Linux compatibility"""
     
-    # Create a new image with transparent background
-    img = Image.new('RGBA', (size, size), (0, 0, 0, 0))
+    # Create a new image with solid background for better compatibility
+    img = Image.new('RGBA', (size, size), (45, 52, 75, 255))
     draw = ImageDraw.Draw(img)
     
-    # Define colors - simpler, high contrast
-    bg_color = (45, 52, 75, 255)  # Dark blue background, fully opaque
-    primary_color = (74, 144, 226, 255)  # Blue
-    missing_color = (220, 53, 69, 255)  # Red
-    present_color = (40, 167, 69, 255)  # Green
+    # Define colors
+    clipboard_color = (240, 240, 240, 255)
+    paper_color = (255, 255, 255, 255)
+    accent_color = (74, 144, 226, 255)
+    checkmark_color = (40, 167, 69, 255)
     
-    # Draw solid background circle (no transparency issues)
-    margin = size // 8
-    draw.ellipse([margin, margin, size-margin, size-margin], fill=bg_color)
+    # Draw clipboard (simple design)
+    clipboard_width = max(10, size // 2)
+    clipboard_height = max(10, int(size * 0.5))
+    clipboard_x = size // 6
+    clipboard_y = size // 6
     
-    # Draw a simple grid of files (3x2)
-    file_size = size // 8
-    spacing = size // 5
-    start_x = size // 4
-    start_y = size // 3
+    # Clipboard base
+    draw.rectangle([clipboard_x, clipboard_y, clipboard_x + clipboard_width, clipboard_y + clipboard_height],
+                  fill=clipboard_color, outline=(200, 200, 200, 255), width=1)
     
-    # File positions in a grid
-    positions = [
-        (start_x, start_y),
-        (start_x + spacing, start_y),
-        (start_x + spacing*2, start_y),
-        (start_x, start_y + spacing),
-        (start_x + spacing, start_y + spacing),
-        (start_x + spacing*2, start_y + spacing),
-    ]
+    # Paper
+    paper_margin = max(2, size // 20)
+    paper_x = clipboard_x + paper_margin
+    paper_y = clipboard_y + paper_margin * 2
+    paper_width = max(5, clipboard_width - paper_margin * 2)
+    paper_height = max(5, clipboard_height - paper_margin * 3)
     
-    # Draw files - some present (green), some missing (red)
-    for i, (x, y) in enumerate(positions):
-        if i in [1, 4]:  # Files 2 and 5 are missing
-            color = missing_color
-            # Draw X for missing
-            draw.line([x-file_size//3, y-file_size//3, x+file_size//3, y+file_size//3], 
-                     fill=(255, 255, 255, 255), width=2)
-            draw.line([x-file_size//3, y+file_size//3, x+file_size//3, y-file_size//3], 
-                     fill=(255, 255, 255, 255), width=2)
-        else:
-            color = present_color
-            # Draw checkmark for present
-            draw.line([x-file_size//3, y, x-file_size//6, y+file_size//4], 
-                     fill=(255, 255, 255, 255), width=2)
-            draw.line([x-file_size//6, y+file_size//4, x+file_size//3, y-file_size//4], 
-                     fill=(255, 255, 255, 255), width=2)
-        
-        # Draw file rectangle
-        draw.rectangle([x-file_size//2, y-file_size//2, 
-                       x+file_size//2, y+file_size//2], 
-                      fill=color, outline=(255, 255, 255, 255), width=1)
+    draw.rectangle([paper_x, paper_y, paper_x + paper_width, paper_y + paper_height],
+                  fill=paper_color, outline=(220, 220, 220, 255), width=1)
     
-    # Draw simple magnifying glass in corner
-    glass_x = size - size//3
-    glass_y = size//4
-    glass_radius = size//8
+    # Simple lines on paper
+    line_spacing = max(3, size // 12)
+    for i in range(3):
+        line_y = paper_y + line_spacing + (i * line_spacing)
+        if line_y < paper_y + paper_height - 3:
+            draw.line([paper_x + 2, line_y, paper_x + paper_width - 2, line_y], 
+                     fill=(200, 200, 200, 255), width=1)
+    
+    # Simple magnifying glass
+    glass_center_x = size - size // 4
+    glass_center_y = size - size // 4
+    glass_radius = max(4, size // 8)
     
     # Glass circle
-    draw.ellipse([glass_x - glass_radius, glass_y - glass_radius,
-                 glass_x + glass_radius, glass_y + glass_radius],
-                fill=None, outline=primary_color, width=3)
+    draw.ellipse([glass_center_x - glass_radius, glass_center_y - glass_radius,
+                 glass_center_x + glass_radius, glass_center_y + glass_radius],
+                fill=(255, 255, 255, 200), outline=accent_color, width=2)
+    
+    # Simple checkmark inside
+    check_size = max(2, glass_radius // 2)
+    draw.line([glass_center_x - check_size//2, glass_center_y, 
+              glass_center_x - check_size//6, glass_center_y + check_size//2], 
+             fill=checkmark_color, width=2)
+    draw.line([glass_center_x - check_size//6, glass_center_y + check_size//2, 
+              glass_center_x + check_size//2, glass_center_y - check_size//3], 
+             fill=checkmark_color, width=2)
     
     # Handle
-    handle_start_x = glass_x + int(glass_radius * 0.7)
-    handle_start_y = glass_y + int(glass_radius * 0.7)
-    handle_end_x = handle_start_x + glass_radius//2
-    handle_end_y = handle_start_y + glass_radius//2
+    handle_start_x = glass_center_x + int(glass_radius * 0.7)
+    handle_start_y = glass_center_y + int(glass_radius * 0.7)
+    handle_end_x = handle_start_x + max(3, glass_radius//2)
+    handle_end_y = handle_start_y + max(3, glass_radius//2)
     
     draw.line([handle_start_x, handle_start_y, handle_end_x, handle_end_y], 
-             fill=primary_color, width=3)
+             fill=accent_color, width=2)
     
     return img
 
