@@ -253,78 +253,97 @@ class MediaManagerGUI:
         icon_set = False
         print(f"Setting icon on {platform.system()}")
         
+        # Handle PyInstaller executable vs script paths
+        if getattr(sys, 'frozen', False):
+            # Running as executable
+            icon_base_path = sys._MEIPASS
+            print(f"Running as executable, icon path: {icon_base_path}")
+        else:
+            # Running as script
+            icon_base_path = os.path.dirname(os.path.abspath(__file__))
+            print(f"Running as script, icon path: {icon_base_path}")
+        
+        def get_icon_path(filename):
+            return os.path.join(icon_base_path, filename)
+        
         # Try platform-specific icons first
         png_sizes = [64, 48, 32, 24, 16]
         
         # On Windows, try ICO files first for best compatibility
         if platform.system() == "Windows":
             # Try the final optimized ICO first
-            if os.path.exists("media_manager_final.ico"):
+            final_ico_path = get_icon_path("media_manager_final.ico")
+            if os.path.exists(final_ico_path):
                 try:
-                    self.root.iconbitmap("media_manager_final.ico")
+                    self.root.iconbitmap(final_ico_path)
                     print("Set icon using media_manager_final.ico")
                     icon_set = True
                 except Exception as e:
                     print(f"Failed to set final ICO icon: {e}")
             
             # Try debug ICO for testing
-            if not icon_set and os.path.exists("debug_test.ico"):
-                try:
-                    self.root.iconbitmap("debug_test.ico")
-                    print("Set icon using debug_test.ico")
-                    icon_set = True
-                except Exception as e:
-                    print(f"Failed to set debug ICO icon: {e}")
+            if not icon_set:
+                debug_ico_path = get_icon_path("debug_test.ico")
+                if os.path.exists(debug_ico_path):
+                    try:
+                        self.root.iconbitmap(debug_ico_path)
+                        print("Set icon using debug_test.ico")
+                        icon_set = True
+                    except Exception as e:
+                        print(f"Failed to set debug ICO icon: {e}")
             
             # Try new Windows solid PNGs
             if not icon_set:
                 for size in [64, 48, 40, 32, 24, 20, 16]:
-                    icon_file = f"windows_solid_{size}.png"
-                    if os.path.exists(icon_file):
+                    icon_filename = f"windows_solid_{size}.png"
+                    icon_path = get_icon_path(icon_filename)
+                    if os.path.exists(icon_path):
                         try:
-                            icon_img = tk.PhotoImage(file=icon_file)
+                            icon_img = tk.PhotoImage(file=icon_path)
                             self.root.iconphoto(True, icon_img)
                             self.root.iconphoto(False, icon_img)
                             self.icon_img = icon_img
-                            print(f"Set icon using {icon_file}")
+                            print(f"Set icon using {icon_filename}")
                             icon_set = True
                             break
                         except Exception as e:
-                            print(f"Failed to load {icon_file}: {e}")
+                            print(f"Failed to load {icon_filename}: {e}")
                             continue
             
             # Try older solid icons as backup
             if not icon_set:
                 for size in [48, 32, 24, 16]:
-                    icon_file = f"media_manager_solid_{size}.png"
-                    if os.path.exists(icon_file):
+                    icon_filename = f"media_manager_solid_{size}.png"
+                    icon_path = get_icon_path(icon_filename)
+                    if os.path.exists(icon_path):
                         try:
-                            icon_img = tk.PhotoImage(file=icon_file)
+                            icon_img = tk.PhotoImage(file=icon_path)
                             self.root.iconphoto(True, icon_img)
                             self.root.iconphoto(False, icon_img)
                             self.icon_img = icon_img
-                            print(f"Set icon using {icon_file}")
+                            print(f"Set icon using {icon_filename}")
                             icon_set = True
                             break
                         except Exception as e:
-                            print(f"Failed to load {icon_file}: {e}")
+                            print(f"Failed to load {icon_filename}: {e}")
                             continue
         
         # Try new clipboard + magnifying glass icons (all platforms)
         if not icon_set:
             for size in png_sizes:
-                icon_file = f"media_manager_new_{size}.png"
-                if os.path.exists(icon_file):
+                icon_filename = f"media_manager_new_{size}.png"
+                icon_path = get_icon_path(icon_filename)
+                if os.path.exists(icon_path):
                     try:
-                        icon_img = tk.PhotoImage(file=icon_file)
+                        icon_img = tk.PhotoImage(file=icon_path)
                         self.root.iconphoto(True, icon_img)
                         # Store reference to prevent garbage collection
                         self.icon_img = icon_img
-                        print(f"Set icon using {icon_file}")
+                        print(f"Set icon using {icon_filename}")
                         icon_set = True
                         break
                     except Exception as e:
-                        print(f"Failed to load {icon_file}: {e}")
+                        print(f"Failed to load {icon_filename}: {e}")
                         continue
         
         # On Linux, try XPM format if PNG didn't work
