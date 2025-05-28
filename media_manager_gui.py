@@ -218,16 +218,8 @@ class MediaManagerGUI:
         self.root = root
         self.root.title("Media Manager - Professional")
         
-        # Set custom icon if available
-        try:
-            if os.path.exists("media_manager_icon.ico"):
-                self.root.iconbitmap("media_manager_icon.ico")
-            elif os.path.exists("media_manager_icon_64.png"):
-                # Fallback to PNG icon
-                icon_img = tk.PhotoImage(file="media_manager_icon_64.png")
-                self.root.iconphoto(True, icon_img)
-        except Exception as e:
-            print(f"Could not set icon: {e}")
+        # Set custom icon with cross-platform support
+        self.set_application_icon()
         
         # Apply modern styling
         self.setup_modern_style()
@@ -255,6 +247,113 @@ class MediaManagerGUI:
         # Create the GUI
         self.create_widgets()
         self.load_settings()
+    
+    def set_application_icon(self):
+        """Set the application icon with cross-platform support"""
+        icon_set = False
+        
+        # On Linux, try simple icons first (better compatibility)
+        if platform.system() == "Linux":
+            # Try simple PNG icons first
+            png_sizes = [64, 48, 32, 24, 16]
+            for size in png_sizes:
+                icon_file = f"media_manager_simple_{size}.png"
+                if os.path.exists(icon_file):
+                    try:
+                        icon_img = tk.PhotoImage(file=icon_file)
+                        self.root.iconphoto(True, icon_img)
+                        # Store reference to prevent garbage collection
+                        self.icon_img = icon_img
+                        print(f"Set icon using {icon_file}")
+                        icon_set = True
+                        break
+                    except Exception as e:
+                        print(f"Failed to load {icon_file}: {e}")
+                        continue
+            
+            # Try XPM format (native Linux format)
+            if not icon_set and os.path.exists("media_manager_icon.xpm"):
+                try:
+                    # XPM is better supported on Linux
+                    self.root.iconbitmap("@media_manager_icon.xpm")
+                    print("Set icon using media_manager_icon.xpm")
+                    icon_set = True
+                except Exception as e:
+                    print(f"Failed to load XPM icon: {e}")
+        
+        # Try original PNG icons (all platforms)
+        if not icon_set:
+            png_sizes = [64, 48, 32, 16]  # Try larger sizes first
+            for size in png_sizes:
+                icon_file = f"media_manager_icon_{size}.png"
+                if os.path.exists(icon_file):
+                    try:
+                        icon_img = tk.PhotoImage(file=icon_file)
+                        self.root.iconphoto(True, icon_img)
+                        # Store reference to prevent garbage collection
+                        self.icon_img = icon_img
+                        print(f"Set icon using {icon_file}")
+                        icon_set = True
+                        break
+                    except Exception as e:
+                        print(f"Failed to load {icon_file}: {e}")
+                        continue
+        
+        # Fallback to ICO file (mainly for Windows)
+        if not icon_set and os.path.exists("media_manager_icon.ico"):
+            try:
+                if platform.system() == "Windows":
+                    self.root.iconbitmap("media_manager_icon.ico")
+                    print("Set icon using media_manager_icon.ico")
+                    icon_set = True
+                else:
+                    # On Linux, try to convert ICO to PNG in memory
+                    try:
+                        from PIL import Image
+                        ico_img = Image.open("media_manager_icon.ico")
+                        # Convert to the largest available size
+                        if hasattr(ico_img, 'size'):
+                            # Save as temporary PNG
+                            temp_png = "temp_icon.png"
+                            ico_img.save(temp_png, "PNG")
+                            icon_img = tk.PhotoImage(file=temp_png)
+                            self.root.iconphoto(True, icon_img)
+                            self.icon_img = icon_img
+                            # Clean up temp file
+                            os.remove(temp_png)
+                            print("Set icon using converted ICO file")
+                            icon_set = True
+                    except ImportError:
+                        print("PIL not available for ICO conversion")
+                    except Exception as e:
+                        print(f"Failed to convert ICO file: {e}")
+            except Exception as e:
+                print(f"Failed to set ICO icon: {e}")
+        
+        # Create a fallback icon if nothing worked
+        if not icon_set:
+            try:
+                # Create a simple fallback icon
+                self.create_fallback_icon()
+            except Exception as e:
+                print(f"Failed to create fallback icon: {e}")
+    
+    def create_fallback_icon(self):
+        """Create a simple fallback icon programmatically"""
+        try:
+            # Create a simple 32x32 icon with basic design
+            icon_data = '''
+                R0lGODlhIAAgAPEAAAAAAP///4CAgP///yH5BAEAAAMALAAAAAAgACAAAAJxnI+py+0Po5y02ouz3rz7
+                D4biSJbmiabqyrbuC8fyTNf2jef6zvf+DwwKh8Si8YhMKpfMpvMJjUqn1Kr1is1qt9yu9wsOi8fk
+                svmMTqvX7Lb7DY/L5/S6/Y7P6/f8vv8PGCg4SFhoeIiYqLjI2Oj4CBkpOUlZaXmJADs=
+            '''
+            import base64
+            icon_img = tk.PhotoImage(data=icon_data)
+            self.root.iconphoto(True, icon_img)
+            self.icon_img = icon_img
+            print("Set fallback icon")
+        except Exception as e:
+            print(f"Failed to create fallback icon: {e}")
     
     def setup_modern_style(self):
         """Apply modern styling to the GUI"""
