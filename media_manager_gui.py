@@ -255,14 +255,17 @@ class MediaManagerGUI:
         # Try platform-specific icons first
         png_sizes = [64, 48, 32, 24, 16]
         
-        # On Windows, try Windows-compatible icons first
+        # On Windows, try solid icons first (best taskbar compatibility)
         if platform.system() == "Windows":
+            # Try solid icons first (no transparency issues)
             for size in png_sizes:
-                icon_file = f"media_manager_windows_{size}.png"
+                icon_file = f"media_manager_solid_{size}.png"
                 if os.path.exists(icon_file):
                     try:
                         icon_img = tk.PhotoImage(file=icon_file)
+                        # Use both methods for better Windows compatibility
                         self.root.iconphoto(True, icon_img)
+                        self.root.iconphoto(False, icon_img)  # Also set for child windows
                         # Store reference to prevent garbage collection
                         self.icon_img = icon_img
                         print(f"Set icon using {icon_file}")
@@ -271,6 +274,23 @@ class MediaManagerGUI:
                     except Exception as e:
                         print(f"Failed to load {icon_file}: {e}")
                         continue
+            
+            # Try Windows-compatible icons as backup
+            if not icon_set:
+                for size in png_sizes:
+                    icon_file = f"media_manager_windows_{size}.png"
+                    if os.path.exists(icon_file):
+                        try:
+                            icon_img = tk.PhotoImage(file=icon_file)
+                            self.root.iconphoto(True, icon_img)
+                            self.root.iconphoto(False, icon_img)
+                            self.icon_img = icon_img
+                            print(f"Set icon using {icon_file}")
+                            icon_set = True
+                            break
+                        except Exception as e:
+                            print(f"Failed to load {icon_file}: {e}")
+                            continue
         
         # Try new clipboard + magnifying glass icons (all platforms)
         if not icon_set:
@@ -336,8 +356,36 @@ class MediaManagerGUI:
         
         # Try ICO files for Windows
         if not icon_set:
-            # Try Windows-compatible ICO first
-            if os.path.exists("media_manager_windows.ico"):
+            # Try solid ICO first (best Windows compatibility)
+            if os.path.exists("media_manager_solid.ico"):
+                try:
+                    if platform.system() == "Windows":
+                        self.root.iconbitmap("media_manager_solid.ico")
+                        print("Set icon using media_manager_solid.ico")
+                        icon_set = True
+                    else:
+                        # On Linux, try to convert ICO to PNG in memory
+                        try:
+                            from PIL import Image
+                            ico_img = Image.open("media_manager_solid.ico")
+                            if hasattr(ico_img, 'size'):
+                                temp_png = "temp_icon.png"
+                                ico_img.save(temp_png, "PNG")
+                                icon_img = tk.PhotoImage(file=temp_png)
+                                self.root.iconphoto(True, icon_img)
+                                self.icon_img = icon_img
+                                os.remove(temp_png)
+                                print("Set icon using converted solid ICO file")
+                                icon_set = True
+                        except ImportError:
+                            print("PIL not available for ICO conversion")
+                        except Exception as e:
+                            print(f"Failed to convert solid ICO file: {e}")
+                except Exception as e:
+                    print(f"Failed to set solid ICO icon: {e}")
+                    
+            # Try Windows-compatible ICO as backup
+            if not icon_set and os.path.exists("media_manager_windows.ico"):
                 try:
                     if platform.system() == "Windows":
                         self.root.iconbitmap("media_manager_windows.ico")
