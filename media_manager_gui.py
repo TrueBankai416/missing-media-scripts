@@ -258,107 +258,58 @@ class MediaManagerGUI:
     
     def setup_modern_style(self):
         """Apply modern styling to the GUI"""
-        style = ttk.Style()
+        self.style = ttk.Style()
         
         # Try to use a more modern theme if available
-        available_themes = style.theme_names()
+        available_themes = self.style.theme_names()
         if 'clam' in available_themes:
-            style.theme_use('clam')
+            self.style.theme_use('clam')
         elif 'alt' in available_themes:
-            style.theme_use('alt')
+            self.style.theme_use('alt')
         
         # Configure modern colors
-        bg_color = "#f8f9fa"  # Light gray background
-        accent_color = "#4a90e2"  # Modern blue
-        dark_bg = "#343a40"  # Dark background for contrast
-        light_text = "#ffffff"  # White text
-        dark_text = "#212529"  # Dark text
-        success_color = "#28a745"  # Green for success
-        danger_color = "#dc3545"  # Red for errors
+        self.bg_color = "#f8f9fa"  # Light gray background
+        self.accent_color = "#4a90e2"  # Modern blue
+        self.dark_bg = "#343a40"  # Dark background for contrast
+        self.light_text = "#ffffff"  # White text
+        self.dark_text = "#212529"  # Dark text
+        self.success_color = "#28a745"  # Green for success
+        self.danger_color = "#dc3545"  # Red for errors
         
         # Configure root window
-        self.root.configure(bg=bg_color)
+        self.root.configure(bg=self.bg_color)
         
-        # Configure ttk styles
-        style.configure('Modern.TLabel', 
-                       background=bg_color, 
-                       foreground=dark_text,
-                       font=('Segoe UI', 9))
+        # Store whether modern styles are available
+        self.modern_styles_available = True
         
-        style.configure('Title.TLabel',
-                       background=bg_color,
-                       foreground=dark_text,
-                       font=('Segoe UI', 14, 'bold'))
-        
-        style.configure('Modern.TButton',
-                       background=accent_color,
-                       foreground=light_text,
-                       borderwidth=0,
-                       focuscolor='none',
-                       font=('Segoe UI', 9))
-        
-        style.map('Modern.TButton',
-                 background=[('active', '#357abd'),
-                           ('pressed', '#2968a3')])
-        
-        style.configure('Success.TButton',
-                       background=success_color,
-                       foreground=light_text,
-                       borderwidth=0,
-                       focuscolor='none',
-                       font=('Segoe UI', 9))
-        
-        style.map('Success.TButton',
-                 background=[('active', '#218838'),
-                           ('pressed', '#1e7e34')])
-        
-        style.configure('Modern.TFrame',
-                       background=bg_color,
-                       borderwidth=1,
-                       relief='solid')
-        
-        style.configure('Modern.TLabelFrame',
-                       background=bg_color,
-                       borderwidth=2,
-                       relief='raised',
-                       labelmargins=(10, 5, 5, 5))
-        
-        style.configure('Modern.TLabelFrame.Label',
-                       background=bg_color,
-                       foreground=dark_text,
-                       font=('Segoe UI', 10, 'bold'))
-        
-        style.configure('Modern.TNotebook',
-                       background=bg_color,
-                       borderwidth=0)
-        
-        style.configure('Modern.TNotebook.Tab',
-                       background='#e9ecef',
-                       foreground=dark_text,
-                       padding=[20, 8],
-                       font=('Segoe UI', 9))
-        
-        style.map('Modern.TNotebook.Tab',
-                 background=[('selected', accent_color),
-                           ('active', '#dee2e6')],
-                 foreground=[('selected', light_text)])
-        
-        style.configure('Modern.TEntry',
-                       fieldbackground='white',
-                       borderwidth=1,
-                       insertcolor=dark_text,
-                       font=('Segoe UI', 9))
-        
-        style.configure('Modern.TCheckbutton',
-                       background=bg_color,
-                       foreground=dark_text,
-                       font=('Segoe UI', 9))
-        
-        style.configure('Modern.TProgressbar',
-                       background=accent_color,
-                       borderwidth=0,
-                       lightcolor=accent_color,
-                       darkcolor=accent_color)
+        try:
+            # Configure ttk styles with error handling
+            self.style.configure('Title.TLabel',
+                               background=self.bg_color,
+                               foreground=self.dark_text,
+                               font=('Segoe UI', 14, 'bold'))
+            
+            self.style.configure('Modern.TButton',
+                               font=('Segoe UI', 9))
+            
+            self.style.map('Modern.TButton',
+                         background=[('active', '#357abd'),
+                                   ('pressed', '#2968a3')])
+            
+            self.style.configure('Success.TButton',
+                               font=('Segoe UI', 9))
+            
+            self.style.map('Success.TButton',
+                         background=[('active', '#218838'),
+                                   ('pressed', '#1e7e34')])
+            
+            # Try to configure more complex styles
+            self.style.configure('Modern.TProgressbar',
+                               background=self.accent_color)
+            
+        except Exception as e:
+            print(f"Warning: Some styling may not be available: {e}")
+            self.modern_styles_available = False
         
     def load_config(self):
         """Load configuration from JSON file"""
@@ -457,44 +408,44 @@ class MediaManagerGUI:
     
     def create_widgets(self):
         """Create the main GUI widgets"""
-        # Create notebook for tabs with modern styling
-        notebook = ttk.Notebook(self.root, style='Modern.TNotebook')
+        # Create notebook for tabs with fallback styling
+        notebook = ttk.Notebook(self.root)
         notebook.pack(fill='both', expand=True, padx=10, pady=10)
         
         # Main tab
-        self.main_frame = ttk.Frame(notebook, style='Modern.TFrame')
+        self.main_frame = ttk.Frame(notebook)
         notebook.add(self.main_frame, text="Main")
         
         # Main Configuration tab
-        self.config_frame = ttk.Frame(notebook, style='Modern.TFrame')
+        self.config_frame = ttk.Frame(notebook)
         notebook.add(self.config_frame, text="Main Configuration")
         
         # Email Configuration tab
-        self.email_frame = ttk.Frame(notebook, style='Modern.TFrame')
+        self.email_frame = ttk.Frame(notebook)
         notebook.add(self.email_frame, text="Email Configuration")
         
         # Automation tab
-        self.automation_frame = ttk.Frame(notebook, style='Modern.TFrame')
+        self.automation_frame = ttk.Frame(notebook)
         notebook.add(self.automation_frame, text="Automation")
         
         # Logs tab
-        self.logs_frame = ttk.Frame(notebook, style='Modern.TFrame')
+        self.logs_frame = ttk.Frame(notebook)
         notebook.add(self.logs_frame, text="Logs & Results")
         
         # Help tab (moved after Logs & Results as requested)
-        self.help_frame = ttk.Frame(notebook, style='Modern.TFrame')
+        self.help_frame = ttk.Frame(notebook)
         notebook.add(self.help_frame, text="Help")
         
         # Info tab
-        self.info_frame = ttk.Frame(notebook, style='Modern.TFrame')
+        self.info_frame = ttk.Frame(notebook)
         notebook.add(self.info_frame, text="Info")
         
         # Support tab
-        self.support_frame = ttk.Frame(notebook, style='Modern.TFrame')
+        self.support_frame = ttk.Frame(notebook)
         notebook.add(self.support_frame, text="Support")
         
         # Issues tab
-        self.issues_frame = ttk.Frame(notebook, style='Modern.TFrame')
+        self.issues_frame = ttk.Frame(notebook)
         notebook.add(self.issues_frame, text="Issues")
         
         self.create_main_tab()
@@ -509,46 +460,85 @@ class MediaManagerGUI:
     
     def create_main_tab(self):
         """Create the main operations tab"""
-        # Title
-        title_label = ttk.Label(self.main_frame, text="Media Manager", style="Title.TLabel")
+        # Title with fallback styling
+        try:
+            title_label = ttk.Label(self.main_frame, text="Media Manager", style="Title.TLabel")
+        except:
+            title_label = ttk.Label(self.main_frame, text="Media Manager", font=("Arial", 14, "bold"))
         title_label.pack(pady=15)
         
-        # Operations frame
-        ops_frame = ttk.LabelFrame(self.main_frame, text="Operations", padding="15", style="Modern.TLabelFrame")
+        # Operations frame with fallback styling
+        ops_frame = ttk.LabelFrame(self.main_frame, text="Operations", padding="15")
         ops_frame.pack(fill='x', padx=15, pady=10)
         
         # Generate media list button
-        ttk.Button(ops_frame, text="📁 Generate Media List", 
-                  command=self.generate_media_list_threaded,
-                  width=30, style="Modern.TButton").pack(pady=8)
+        try:
+            btn1 = ttk.Button(ops_frame, text="📁 Generate Media List", 
+                            command=self.generate_media_list_threaded,
+                            width=30, style="Modern.TButton")
+        except:
+            btn1 = ttk.Button(ops_frame, text="📁 Generate Media List", 
+                            command=self.generate_media_list_threaded,
+                            width=30)
+        btn1.pack(pady=8)
         
         # Check for missing media button
-        ttk.Button(ops_frame, text="🔍 Check for Missing Media", 
-                  command=self.check_missing_media_threaded,
-                  width=30, style="Modern.TButton").pack(pady=8)
+        try:
+            btn2 = ttk.Button(ops_frame, text="🔍 Check for Missing Media", 
+                            command=self.check_missing_media_threaded,
+                            width=30, style="Modern.TButton")
+        except:
+            btn2 = ttk.Button(ops_frame, text="🔍 Check for Missing Media", 
+                            command=self.check_missing_media_threaded,
+                            width=30)
+        btn2.pack(pady=8)
         
         # Manage files button
-        ttk.Button(ops_frame, text="🗂️ Manage File Retention", 
-                  command=self.manage_files_threaded,
-                  width=30, style="Modern.TButton").pack(pady=8)
+        try:
+            btn3 = ttk.Button(ops_frame, text="🗂️ Manage File Retention", 
+                            command=self.manage_files_threaded,
+                            width=30, style="Modern.TButton")
+        except:
+            btn3 = ttk.Button(ops_frame, text="🗂️ Manage File Retention", 
+                            command=self.manage_files_threaded,
+                            width=30)
+        btn3.pack(pady=8)
         
         # Windows filename validation button
-        ttk.Button(ops_frame, text="✅ Check Windows Filename Compatibility", 
-                  command=self.check_windows_filenames_threaded,
-                  width=40, style="Modern.TButton").pack(pady=8)
+        try:
+            btn4 = ttk.Button(ops_frame, text="✅ Check Windows Filename Compatibility", 
+                            command=self.check_windows_filenames_threaded,
+                            width=40, style="Modern.TButton")
+        except:
+            btn4 = ttk.Button(ops_frame, text="✅ Check Windows Filename Compatibility", 
+                            command=self.check_windows_filenames_threaded,
+                            width=40)
+        btn4.pack(pady=8)
         
         # Filename fixing button
-        ttk.Button(ops_frame, text="🔧 View & Fix Filename Issues", 
-                  command=self.view_and_fix_filenames,
-                  width=30, style="Modern.TButton").pack(pady=8)
+        try:
+            btn5 = ttk.Button(ops_frame, text="🔧 View & Fix Filename Issues", 
+                            command=self.view_and_fix_filenames,
+                            width=30, style="Modern.TButton")
+        except:
+            btn5 = ttk.Button(ops_frame, text="🔧 View & Fix Filename Issues", 
+                            command=self.view_and_fix_filenames,
+                            width=30)
+        btn5.pack(pady=8)
         
         # Run all button
-        ttk.Button(ops_frame, text="⚡ Run Complete Check", 
-                  command=self.run_complete_check_threaded,
-                  width=30, style="Success.TButton").pack(pady=15)
+        try:
+            btn6 = ttk.Button(ops_frame, text="⚡ Run Complete Check", 
+                            command=self.run_complete_check_threaded,
+                            width=30, style="Success.TButton")
+        except:
+            btn6 = ttk.Button(ops_frame, text="⚡ Run Complete Check", 
+                            command=self.run_complete_check_threaded,
+                            width=30)
+        btn6.pack(pady=15)
         
-        # Status frame
-        status_frame = ttk.LabelFrame(self.main_frame, text="Status", padding="15", style="Modern.TLabelFrame")
+        # Status frame with fallback styling
+        status_frame = ttk.LabelFrame(self.main_frame, text="Status", padding="15")
         status_frame.pack(fill='both', expand=True, padx=15, pady=10)
         
         self.status_text = scrolledtext.ScrolledText(status_frame, height=15, state='disabled',
@@ -557,8 +547,11 @@ class MediaManagerGUI:
                                                     insertbackground='#212529')
         self.status_text.pack(fill='both', expand=True)
         
-        # Progress bar
-        self.progress = ttk.Progressbar(self.main_frame, mode='indeterminate', style="Modern.TProgressbar")
+        # Progress bar with fallback styling
+        try:
+            self.progress = ttk.Progressbar(self.main_frame, mode='indeterminate', style="Modern.TProgressbar")
+        except:
+            self.progress = ttk.Progressbar(self.main_frame, mode='indeterminate')
         self.progress.pack(fill='x', padx=15, pady=10)
     
     def create_config_tab(self):
