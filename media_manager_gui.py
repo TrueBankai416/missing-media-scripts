@@ -216,7 +216,22 @@ class FilenameFixDialog:
 class MediaManagerGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Media Manager - GUI")
+        self.root.title("Media Manager - Professional")
+        
+        # Set custom icon if available
+        try:
+            if os.path.exists("media_manager_icon.ico"):
+                self.root.iconbitmap("media_manager_icon.ico")
+            elif os.path.exists("media_manager_icon_64.png"):
+                # Fallback to PNG icon
+                icon_img = tk.PhotoImage(file="media_manager_icon_64.png")
+                self.root.iconphoto(True, icon_img)
+        except Exception as e:
+            print(f"Could not set icon: {e}")
+        
+        # Apply modern styling
+        self.setup_modern_style()
+        
         # Start maximized to show all buttons properly
         try:
             # Try zoomed state first (Windows)
@@ -240,6 +255,110 @@ class MediaManagerGUI:
         # Create the GUI
         self.create_widgets()
         self.load_settings()
+    
+    def setup_modern_style(self):
+        """Apply modern styling to the GUI"""
+        style = ttk.Style()
+        
+        # Try to use a more modern theme if available
+        available_themes = style.theme_names()
+        if 'clam' in available_themes:
+            style.theme_use('clam')
+        elif 'alt' in available_themes:
+            style.theme_use('alt')
+        
+        # Configure modern colors
+        bg_color = "#f8f9fa"  # Light gray background
+        accent_color = "#4a90e2"  # Modern blue
+        dark_bg = "#343a40"  # Dark background for contrast
+        light_text = "#ffffff"  # White text
+        dark_text = "#212529"  # Dark text
+        success_color = "#28a745"  # Green for success
+        danger_color = "#dc3545"  # Red for errors
+        
+        # Configure root window
+        self.root.configure(bg=bg_color)
+        
+        # Configure ttk styles
+        style.configure('Modern.TLabel', 
+                       background=bg_color, 
+                       foreground=dark_text,
+                       font=('Segoe UI', 9))
+        
+        style.configure('Title.TLabel',
+                       background=bg_color,
+                       foreground=dark_text,
+                       font=('Segoe UI', 14, 'bold'))
+        
+        style.configure('Modern.TButton',
+                       background=accent_color,
+                       foreground=light_text,
+                       borderwidth=0,
+                       focuscolor='none',
+                       font=('Segoe UI', 9))
+        
+        style.map('Modern.TButton',
+                 background=[('active', '#357abd'),
+                           ('pressed', '#2968a3')])
+        
+        style.configure('Success.TButton',
+                       background=success_color,
+                       foreground=light_text,
+                       borderwidth=0,
+                       focuscolor='none',
+                       font=('Segoe UI', 9))
+        
+        style.map('Success.TButton',
+                 background=[('active', '#218838'),
+                           ('pressed', '#1e7e34')])
+        
+        style.configure('Modern.TFrame',
+                       background=bg_color,
+                       borderwidth=1,
+                       relief='solid')
+        
+        style.configure('Modern.TLabelFrame',
+                       background=bg_color,
+                       borderwidth=2,
+                       relief='raised',
+                       labelmargins=(10, 5, 5, 5))
+        
+        style.configure('Modern.TLabelFrame.Label',
+                       background=bg_color,
+                       foreground=dark_text,
+                       font=('Segoe UI', 10, 'bold'))
+        
+        style.configure('Modern.TNotebook',
+                       background=bg_color,
+                       borderwidth=0)
+        
+        style.configure('Modern.TNotebook.Tab',
+                       background='#e9ecef',
+                       foreground=dark_text,
+                       padding=[20, 8],
+                       font=('Segoe UI', 9))
+        
+        style.map('Modern.TNotebook.Tab',
+                 background=[('selected', accent_color),
+                           ('active', '#dee2e6')],
+                 foreground=[('selected', light_text)])
+        
+        style.configure('Modern.TEntry',
+                       fieldbackground='white',
+                       borderwidth=1,
+                       insertcolor=dark_text,
+                       font=('Segoe UI', 9))
+        
+        style.configure('Modern.TCheckbutton',
+                       background=bg_color,
+                       foreground=dark_text,
+                       font=('Segoe UI', 9))
+        
+        style.configure('Modern.TProgressbar',
+                       background=accent_color,
+                       borderwidth=0,
+                       lightcolor=accent_color,
+                       darkcolor=accent_color)
         
     def load_config(self):
         """Load configuration from JSON file"""
@@ -338,44 +457,44 @@ class MediaManagerGUI:
     
     def create_widgets(self):
         """Create the main GUI widgets"""
-        # Create notebook for tabs
-        notebook = ttk.Notebook(self.root)
+        # Create notebook for tabs with modern styling
+        notebook = ttk.Notebook(self.root, style='Modern.TNotebook')
         notebook.pack(fill='both', expand=True, padx=10, pady=10)
         
         # Main tab
-        self.main_frame = ttk.Frame(notebook)
+        self.main_frame = ttk.Frame(notebook, style='Modern.TFrame')
         notebook.add(self.main_frame, text="Main")
         
         # Main Configuration tab
-        self.config_frame = ttk.Frame(notebook)
+        self.config_frame = ttk.Frame(notebook, style='Modern.TFrame')
         notebook.add(self.config_frame, text="Main Configuration")
         
         # Email Configuration tab
-        self.email_frame = ttk.Frame(notebook)
+        self.email_frame = ttk.Frame(notebook, style='Modern.TFrame')
         notebook.add(self.email_frame, text="Email Configuration")
         
         # Automation tab
-        self.automation_frame = ttk.Frame(notebook)
+        self.automation_frame = ttk.Frame(notebook, style='Modern.TFrame')
         notebook.add(self.automation_frame, text="Automation")
         
         # Logs tab
-        self.logs_frame = ttk.Frame(notebook)
+        self.logs_frame = ttk.Frame(notebook, style='Modern.TFrame')
         notebook.add(self.logs_frame, text="Logs & Results")
         
         # Help tab (moved after Logs & Results as requested)
-        self.help_frame = ttk.Frame(notebook)
+        self.help_frame = ttk.Frame(notebook, style='Modern.TFrame')
         notebook.add(self.help_frame, text="Help")
         
         # Info tab
-        self.info_frame = ttk.Frame(notebook)
+        self.info_frame = ttk.Frame(notebook, style='Modern.TFrame')
         notebook.add(self.info_frame, text="Info")
         
         # Support tab
-        self.support_frame = ttk.Frame(notebook)
+        self.support_frame = ttk.Frame(notebook, style='Modern.TFrame')
         notebook.add(self.support_frame, text="Support")
         
         # Issues tab
-        self.issues_frame = ttk.Frame(notebook)
+        self.issues_frame = ttk.Frame(notebook, style='Modern.TFrame')
         notebook.add(self.issues_frame, text="Issues")
         
         self.create_main_tab()
@@ -391,53 +510,56 @@ class MediaManagerGUI:
     def create_main_tab(self):
         """Create the main operations tab"""
         # Title
-        title_label = ttk.Label(self.main_frame, text="Media Manager", font=("Arial", 16, "bold"))
-        title_label.pack(pady=10)
+        title_label = ttk.Label(self.main_frame, text="Media Manager", style="Title.TLabel")
+        title_label.pack(pady=15)
         
         # Operations frame
-        ops_frame = ttk.LabelFrame(self.main_frame, text="Operations", padding="10")
-        ops_frame.pack(fill='x', padx=10, pady=5)
+        ops_frame = ttk.LabelFrame(self.main_frame, text="Operations", padding="15", style="Modern.TLabelFrame")
+        ops_frame.pack(fill='x', padx=15, pady=10)
         
         # Generate media list button
-        ttk.Button(ops_frame, text="Generate Media List", 
+        ttk.Button(ops_frame, text="📁 Generate Media List", 
                   command=self.generate_media_list_threaded,
-                  width=25).pack(pady=5)
+                  width=30, style="Modern.TButton").pack(pady=8)
         
         # Check for missing media button
-        ttk.Button(ops_frame, text="Check for Missing Media", 
+        ttk.Button(ops_frame, text="🔍 Check for Missing Media", 
                   command=self.check_missing_media_threaded,
-                  width=25).pack(pady=5)
+                  width=30, style="Modern.TButton").pack(pady=8)
         
         # Manage files button
-        ttk.Button(ops_frame, text="Manage File Retention", 
+        ttk.Button(ops_frame, text="🗂️ Manage File Retention", 
                   command=self.manage_files_threaded,
-                  width=25).pack(pady=5)
+                  width=30, style="Modern.TButton").pack(pady=8)
         
         # Windows filename validation button
-        ttk.Button(ops_frame, text="Check Windows Filename Compatibility", 
+        ttk.Button(ops_frame, text="✅ Check Windows Filename Compatibility", 
                   command=self.check_windows_filenames_threaded,
-                  width=35).pack(pady=5)
+                  width=40, style="Modern.TButton").pack(pady=8)
         
         # Filename fixing button
-        ttk.Button(ops_frame, text="View & Fix Filename Issues", 
+        ttk.Button(ops_frame, text="🔧 View & Fix Filename Issues", 
                   command=self.view_and_fix_filenames,
-                  width=25).pack(pady=5)
+                  width=30, style="Modern.TButton").pack(pady=8)
         
         # Run all button
-        ttk.Button(ops_frame, text="Run Complete Check", 
+        ttk.Button(ops_frame, text="⚡ Run Complete Check", 
                   command=self.run_complete_check_threaded,
-                  width=25).pack(pady=10)
+                  width=30, style="Success.TButton").pack(pady=15)
         
         # Status frame
-        status_frame = ttk.LabelFrame(self.main_frame, text="Status", padding="10")
-        status_frame.pack(fill='both', expand=True, padx=10, pady=5)
+        status_frame = ttk.LabelFrame(self.main_frame, text="Status", padding="15", style="Modern.TLabelFrame")
+        status_frame.pack(fill='both', expand=True, padx=15, pady=10)
         
-        self.status_text = scrolledtext.ScrolledText(status_frame, height=15, state='disabled')
+        self.status_text = scrolledtext.ScrolledText(status_frame, height=15, state='disabled',
+                                                    font=('Consolas', 9), 
+                                                    bg='#ffffff', fg='#212529',
+                                                    insertbackground='#212529')
         self.status_text.pack(fill='both', expand=True)
         
         # Progress bar
-        self.progress = ttk.Progressbar(self.main_frame, mode='indeterminate')
-        self.progress.pack(fill='x', padx=10, pady=5)
+        self.progress = ttk.Progressbar(self.main_frame, mode='indeterminate', style="Modern.TProgressbar")
+        self.progress.pack(fill='x', padx=15, pady=10)
     
     def create_config_tab(self):
         """Create the main configuration tab"""
