@@ -46,6 +46,6 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
-    icon='media_manager_solid.ico',  # Solid background clipboard + magnifying glass icon (best Windows compatibility)
+    icon='media_manager_final.ico',  # Final multi-size ICO with proper Windows compatibility
     version_file=None,  # Add path to version file if needed
 )

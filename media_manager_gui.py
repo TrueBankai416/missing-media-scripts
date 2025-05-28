@@ -251,34 +251,52 @@ class MediaManagerGUI:
     def set_application_icon(self):
         """Set the application icon with cross-platform support"""
         icon_set = False
+        print(f"Setting icon on {platform.system()}")
         
         # Try platform-specific icons first
         png_sizes = [64, 48, 32, 24, 16]
         
-        # On Windows, try solid icons first (best taskbar compatibility)
+        # On Windows, try ICO files first for best compatibility
         if platform.system() == "Windows":
-            # Try solid icons first (no transparency issues)
-            for size in png_sizes:
-                icon_file = f"media_manager_solid_{size}.png"
-                if os.path.exists(icon_file):
-                    try:
-                        icon_img = tk.PhotoImage(file=icon_file)
-                        # Use both methods for better Windows compatibility
-                        self.root.iconphoto(True, icon_img)
-                        self.root.iconphoto(False, icon_img)  # Also set for child windows
-                        # Store reference to prevent garbage collection
-                        self.icon_img = icon_img
-                        print(f"Set icon using {icon_file}")
-                        icon_set = True
-                        break
-                    except Exception as e:
-                        print(f"Failed to load {icon_file}: {e}")
-                        continue
+            # Try the final optimized ICO first
+            if os.path.exists("media_manager_final.ico"):
+                try:
+                    self.root.iconbitmap("media_manager_final.ico")
+                    print("Set icon using media_manager_final.ico")
+                    icon_set = True
+                except Exception as e:
+                    print(f"Failed to set final ICO icon: {e}")
             
-            # Try Windows-compatible icons as backup
+            # Try debug ICO for testing
+            if not icon_set and os.path.exists("debug_test.ico"):
+                try:
+                    self.root.iconbitmap("debug_test.ico")
+                    print("Set icon using debug_test.ico")
+                    icon_set = True
+                except Exception as e:
+                    print(f"Failed to set debug ICO icon: {e}")
+            
+            # Try new Windows solid PNGs
             if not icon_set:
-                for size in png_sizes:
-                    icon_file = f"media_manager_windows_{size}.png"
+                for size in [64, 48, 40, 32, 24, 20, 16]:
+                    icon_file = f"windows_solid_{size}.png"
+                    if os.path.exists(icon_file):
+                        try:
+                            icon_img = tk.PhotoImage(file=icon_file)
+                            self.root.iconphoto(True, icon_img)
+                            self.root.iconphoto(False, icon_img)
+                            self.icon_img = icon_img
+                            print(f"Set icon using {icon_file}")
+                            icon_set = True
+                            break
+                        except Exception as e:
+                            print(f"Failed to load {icon_file}: {e}")
+                            continue
+            
+            # Try older solid icons as backup
+            if not icon_set:
+                for size in [48, 32, 24, 16]:
+                    icon_file = f"media_manager_solid_{size}.png"
                     if os.path.exists(icon_file):
                         try:
                             icon_img = tk.PhotoImage(file=icon_file)
